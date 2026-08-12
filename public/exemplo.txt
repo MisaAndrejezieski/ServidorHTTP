@@ -1,0 +1,26 @@
+Servidor HTTP/WebSocket em Java
+================================
+
+Versão: 3.0
+Data:Wed Aug 12 13:17:04 GMT-03:00 2026
+Funcionalidades:
+✅ Servir arquivos estáticos
+✅ API REST com JSON
+✅ WebSockets (chat em tempo real)
+✅ Cookies de sessão
+✅ Sessões persistentes
+✅ Multi-thread
+
+Endpoints:
+- GET  /api/hello?nome=...  -> Saudação
+- GET  /api/hora            -> Hora atual
+- GET  /api/data            -> Data atual
+- GET  /api/contador        -> Contador (sessão)
+- GET  /api/status          -> Status do servidor
+- GET  /api/websockets      -> Conexões WebSocket
+- POST /api/echo            -> Ecoa o corpo
+- POST /api/contato         -> Recebe contato
+
+WebSocket:
+- ws://localhost:8080/ws
+- Comandos: /nick, /ping, /sair
