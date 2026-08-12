@@ -1,60 +1,458 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-    <title>Teste WebSocket</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Neon | Misael Andrejezieski</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ========== ESTILOS ESPECÍFICOS DO CHAT ========== */
+        .chat-page {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-page .chat-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .chat-page .chat-header h1 {
+            font-size: 2.8em;
+            margin-bottom: 5px;
+        }
+
+        .chat-page .chat-header p {
+            color: #9a8aa2;
+            font-size: 1.1em;
+        }
+
+        .chat-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(255, 143, 171, 0.05);
+        }
+
+        .chat-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            border-bottom: 1px solid var(--border-card);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-status-bar .status-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .chat-status-bar .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .chat-status-bar .status-dot.online {
+            background: var(--neon-green);
+            box-shadow: 0 0 20px var(--neon-green-glow);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .chat-status-bar .status-dot.offline {
+            background: #ff0044;
+            box-shadow: 0 0 20px rgba(255, 0, 68, 0.3);
+        }
+
+        .chat-status-bar .status-text {
+            color: #c8bdd0;
+            font-size: 0.95em;
+        }
+
+        .chat-status-bar .status-text.online {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px var(--neon-green-glow);
+        }
+
+        .chat-status-bar .status-text.offline {
+            color: #ff0044;
+        }
+
+        .chat-status-bar .user-info {
+            color: var(--neon-purple);
+            font-size: 0.9em;
+            text-shadow: 0 0 10px var(--neon-purple-glow);
+        }
+
+        #chat-messages {
+            height: 420px;
+            overflow-y: auto;
+            padding: 20px 24px;
+            background: rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        #chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 143, 171, 0.05);
+        }
+
+        #chat-messages::-webkit-scrollbar-thumb {
+            background: var(--neon-pink);
+            border-radius: 10px;
+            box-shadow: 0 0 20px var(--neon-pink-glow);
+        }
+
+        .msg {
+            padding: 8px 16px;
+            border-radius: 14px;
+            animation: fadeIn 0.25s ease;
+            max-width: 82%;
+            word-wrap: break-word;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .msg.sistema {
+            background: rgba(203, 166, 247, 0.15);
+            color: var(--neon-purple);
+            border: 1px solid rgba(203, 166, 247, 0.15);
+            align-self: center;
+            max-width: 90%;
+            text-shadow: 0 0 10px var(--neon-purple-glow);
+            font-size: 0.85em;
+            padding: 6px 18px;
+            border-radius: 30px;
+        }
+
+        .msg.usuario {
+            background: rgba(255, 143, 171, 0.15);
+            color: var(--neon-pink);
+            border: 1px solid rgba(255, 143, 171, 0.15);
+            align-self: flex-end;
+            margin-left: auto;
+            text-shadow: 0 0 10px var(--neon-pink-glow);
+        }
+
+        .msg.outro {
+            background: rgba(137, 180, 250, 0.10);
+            color: var(--neon-blue);
+            border: 1px solid rgba(137, 180, 250, 0.10);
+            align-self: flex-start;
+            text-shadow: 0 0 10px var(--neon-blue-glow);
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-card);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid var(--border-card);
+            border-radius: 30px;
+            font-size: 1em;
+            background: rgba(0, 0, 0, 0.3);
+            color: #e0d6e8;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .chat-input-area input:focus {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 30px var(--neon-pink-glow);
+        }
+
+        .chat-input-area input::placeholder {
+            color: #6a5a72;
+        }
+
+        .chat-input-area input:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .chat-input-area button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--neon-pink);
+            color: #0f0a12;
+            box-shadow: 0 0 30px var(--neon-pink-glow);
+        }
+
+        .chat-input-area button:hover:not(:disabled) {
+            transform: scale(1.03);
+            box-shadow: 0 0 50px var(--neon-pink-glow);
+        }
+
+        .chat-input-area button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chat-commands {
+            padding: 10px 24px;
+            border-top: 1px solid rgba(255, 143, 171, 0.05);
+            font-size: 0.8em;
+            color: #6a5a72;
+            background: rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .chat-commands code {
+            background: rgba(255, 143, 171, 0.08);
+            color: var(--neon-pink);
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            border: 1px solid rgba(255, 143, 171, 0.08);
+        }
+
+        .chat-commands .cmd-label {
+            color: #6a5a72;
+        }
+
+        .chat-footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .chat-footer a {
+            color: var(--neon-purple);
+            text-decoration: none;
+            text-shadow: 0 0 10px var(--neon-purple-glow);
+            transition: all 0.3s;
+        }
+
+        .chat-footer a:hover {
+            color: var(--neon-pink);
+            text-shadow: 0 0 30px var(--neon-pink-glow);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== RESPONSIVO ========== */
+        @media (max-width: 600px) {
+            .chat-page .chat-header h1 { font-size: 2em; }
+            #chat-messages { height: 300px; padding: 14px; }
+            .chat-input-area { flex-direction: column; }
+            .chat-input-area button { width: 100%; }
+            .chat-commands { flex-direction: column; align-items: center; }
+        }
+    </style>
 </head>
 <body>
-    <h1>Chat WebSocket</h1>
-    <div id="status">Desconectado</div>
-    <div id="messages"></div>
-    <input type="text" id="input" placeholder="Digite aqui...">
-    <button id="send">Enviar</button>
+    <!-- PARTÍCULAS -->
+    <canvas id="particles"></canvas>
 
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="logo">🚀</span>
+                <span class="glitch-text" data-text="Misael">Misael</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/projetos">Projetos</a></li>
+                <li><a href="/contato">Contato</a></li>
+                <li><a href="/ws" class="active">💬 Chat</a></li>
+            </ul>
+            <div class="nav-status">
+                <span class="status-dot online"></span>
+                <span class="neon-text">#Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- CHAT -->
+    <main class="chat-page">
+        <div class="chat-header">
+            <h1 class="neon-title" style="font-size: 2.5em;">💬 Chat Neon</h1>
+            <p>Conecte-se e converse em tempo real com WebSocket</p>
+        </div>
+
+        <div class="chat-container">
+            <!-- Status -->
+            <div class="chat-status-bar">
+                <div class="status-info">
+                    <span id="chat-status-dot" class="status-dot offline"></span>
+                    <span id="chat-status-text" class="status-text offline">Desconectado</span>
+                </div>
+                <div class="user-info">
+                    <span id="chat-user-name">👤 Anônimo</span>
+                </div>
+            </div>
+
+            <!-- Mensagens -->
+            <div id="chat-messages"></div>
+
+            <!-- Input -->
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="⚡ Digite sua mensagem..." disabled>
+                <button id="chat-send" disabled>✨ Enviar</button>
+            </div>
+
+            <!-- Comandos -->
+            <div class="chat-commands">
+                <span class="cmd-label">💡 Comandos:</span>
+                <code>/nick [nome]</code>
+                <code>/ping</code>
+                <code>/sair</code>
+            </div>
+        </div>
+
+        <div class="chat-footer">
+            <a href="/">← Voltar para Home</a>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="neon-footer">
+            <p>✦ Misael Andrejezieski ✦ 2026</p>
+            <div class="footer-links">
+                <a href="https://misaandrejezieski.github.io/Misa/" target="_blank" class="neon-link-footer">☕ Meu Site</a>
+                <a href="https://github.com/MisaAndrejezieski" target="_blank" class="neon-link-footer">🐙 GitHub</a>
+                <a href="https://www.linkedin.com/in/misael-andrejezieski-b4996720a/" target="_blank" class="neon-link-footer">🔗 LinkedIn</a>
+                <a href="https://www.instagram.com/misaelandrejezieski/" target="_blank" class="neon-link-footer">📸 Instagram</a>
+                <a href="https://www.facebook.com/profile.php?id=100034358779961" target="_blank" class="neon-link-footer">👍 Facebook</a>
+            </div>
+        </footer>
+    </main>
+
+    <!-- SCRIPT PRINCIPAL -->
+    <script src="script.js"></script>
+
+    <!-- SCRIPT DO CHAT (SUBSTITUI O DO script.js PARA ESTA PÁGINA) -->
     <script>
-        const statusDiv = document.getElementById('status');
-        const messagesDiv = document.getElementById('messages');
-        const input = document.getElementById('input');
-        const sendBtn = document.getElementById('send');
+        // ============ CHAT WEBSOCKET ============
+        let ws = null;
+        let nomeUsuario = 'Anônimo';
 
-        // Conecta na porta 8081 (servidor WebSocket separado)
-        const ws = new WebSocket('ws://localhost:8081');
+        const statusDot = document.getElementById('chat-status-dot');
+        const statusText = document.getElementById('chat-status-text');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const userNameSpan = document.getElementById('chat-user-name');
 
-        ws.onopen = function() {
-            statusDiv.textContent = '✅ Conectado';
-            statusDiv.style.color = 'green';
-            input.disabled = false;
-            sendBtn.disabled = false;
-        };
+        function adicionarMensagem(texto, classe = 'outro') {
+            if (!chatMessages) return;
+            const div = document.createElement('div');
+            div.className = 'msg ' + classe;
+            div.textContent = texto;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-        ws.onmessage = function(event) {
-            const msg = document.createElement('div');
-            msg.textContent = event.data;
-            messagesDiv.appendChild(msg);
-        };
+        function conectarWebSocket() {
+            // Conecta na porta 8081 (servidor WebSocket separado)
+            ws = new WebSocket('ws://localhost:8081');
 
-        ws.onclose = function() {
-            statusDiv.textContent = '❌ Desconectado';
-            statusDiv.style.color = 'red';
-            input.disabled = true;
-            sendBtn.disabled = true;
-        };
+            ws.onopen = function() {
+                statusDot.className = 'status-dot online';
+                statusText.textContent = 'Conectado';
+                statusText.className = 'status-text online';
+                chatInput.disabled = false;
+                chatSend.disabled = false;
+                chatInput.focus();
 
-        ws.onerror = function() {
-            statusDiv.textContent = '❌ Erro na conexão';
-            statusDiv.style.color = 'red';
-        };
+                // Atualiza nome do usuário
+                if (userNameSpan) {
+                    userNameSpan.textContent = '👤 ' + nomeUsuario;
+                }
 
-        sendBtn.addEventListener('click', function() {
-            const texto = input.value.trim();
-            if (texto && ws.readyState === WebSocket.OPEN) {
-                ws.send(texto);
-                input.value = '';
+                adicionarMensagem('🔗 Conectado ao servidor!', 'sistema');
+            };
+
+            ws.onmessage = function(evento) {
+                adicionarMensagem(evento.data, 'outro');
+            };
+
+            ws.onclose = function() {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = 'Desconectado';
+                statusText.className = 'status-text offline';
+                chatInput.disabled = true;
+                chatSend.disabled = true;
+
+                adicionarMensagem('🔌 Desconectado. Tentando reconectar em 3s...', 'sistema');
+
+                setTimeout(conectarWebSocket, 3000);
+            };
+
+            ws.onerror = function() {
+                adicionarMensagem('❌ Erro na conexão.', 'sistema');
+            };
+        }
+
+        function enviarMensagemChat() {
+            const texto = chatInput.value.trim();
+            if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+            // Verifica se é comando
+            if (texto.startsWith('/')) {
+                const parts = texto.split(' ', 2);
+                const comando = parts[0].toLowerCase();
+
+                if (comando === '/nick' && parts.length > 1) {
+                    nomeUsuario = parts[1];
+                    if (userNameSpan) {
+                        userNameSpan.textContent = '👤 ' + nomeUsuario;
+                    }
+                    ws.send(texto);
+                    adicionarMensagem('✅ Nome alterado para: ' + nomeUsuario, 'sistema');
+                    chatInput.value = '';
+                    chatInput.focus();
+                    return;
+                }
             }
+
+            ws.send(texto);
+            adicionarMensagem('👤 ' + texto, 'usuario');
+            chatInput.value = '';
+            chatInput.focus();
+        }
+
+        // Eventos
+        chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') enviarMensagemChat();
         });
 
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') sendBtn.click();
-        });
+        chatSend.addEventListener('click', enviarMensagemChat);
+
+        // Inicia a conexão
+        conectarWebSocket();
     </script>
 </body>
 </html>
