@@ -46,12 +46,10 @@ class Particle {
     }
 }
 
-// Cria as partículas
 for (let i = 0; i < particleCount; i++) {
     particles.push(new Particle());
 }
 
-// Anima as partículas
 function animateParticles() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => {
@@ -59,7 +57,6 @@ function animateParticles() {
         p.draw();
     });
 
-    // Conexões entre partículas próximas
     for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
             const dx = particles[i].x - particles[j].x;
@@ -81,7 +78,6 @@ function animateParticles() {
 
 animateParticles();
 
-// Redimensiona o canvas
 window.addEventListener('resize', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -118,7 +114,6 @@ function atualizarStatus() {
         });
 }
 
-// Atualiza status a cada 5 segundos
 setInterval(atualizarStatus, 5000);
 atualizarStatus();
 
@@ -132,7 +127,7 @@ function carregarSessao() {
             const sessionData = document.getElementById('session-data-content');
             const sessionExpira = document.getElementById('session-expira');
             const sessionIdDash = document.getElementById('session-id-dash');
-            
+
             if (sessionId) sessionId.textContent = sessao.SESSION_ID || 'N/A';
             if (sessionIdDash) sessionIdDash.textContent = sessao.SESSION_ID ? 'Ativa' : 'Nenhuma';
             if (sessionData) sessionData.textContent = JSON.stringify(sessao, null, 2);
@@ -186,7 +181,6 @@ function atualizarContador() {
         .catch(() => {});
 }
 
-// Carrega sessão e contador se os elementos existirem
 if (document.getElementById('session-id')) {
     carregarSessao();
 }
@@ -199,29 +193,26 @@ setInterval(carregarSessao, 10000);
 // ============ CHAT WEBSOCKET ============
 let ws = null;
 let wsConectado = false;
+let nomeUsuario = 'Anônimo';
 
 function conectarWebSocket() {
-    // Verifica se está na página do chat
     if (!document.getElementById('chat-messages')) return;
-    
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
 
     ws.onopen = function() {
         wsConectado = true;
-        const statusDot = document.getElementById('chat-status-indicator');
-        const statusText = document.getElementById('chat-status-text');
+        const dot = document.getElementById('chat-status-dot');
+        const text = document.getElementById('chat-status-text');
         const input = document.getElementById('chat-input');
         const sendBtn = document.getElementById('chat-send');
-        
-        if (statusDot) statusDot.className = 'status-dot online';
-        if (statusText) {
-            statusText.textContent = 'Conectado';
-            statusText.className = 'neon-text';
-        }
-        if (input) input.disabled = false;
-        if (sendBtn) sendBtn.disabled = false;
-        if (input) input.focus();
+
+        if (dot) { dot.className = 'status-dot online'; }
+        if (text) { text.textContent = 'Conectado'; text.className = 'status-text online'; }
+        if (input) { input.disabled = false; input.focus(); }
+        if (sendBtn) { sendBtn.disabled = false; }
+
         adicionarMensagemChat('🔗 Conectado ao servidor!', 'sistema');
     };
 
@@ -231,16 +222,17 @@ function conectarWebSocket() {
 
     ws.onclose = function() {
         wsConectado = false;
-        const statusDot = document.getElementById('chat-status-indicator');
-        const statusText = document.getElementById('chat-status-text');
+        const dot = document.getElementById('chat-status-dot');
+        const text = document.getElementById('chat-status-text');
         const input = document.getElementById('chat-input');
         const sendBtn = document.getElementById('chat-send');
-        
-        if (statusDot) statusDot.className = 'status-dot offline';
-        if (statusText) statusText.textContent = 'Desconectado';
-        if (input) input.disabled = true;
-        if (sendBtn) sendBtn.disabled = true;
-        adicionarMensagemChat('🔌 Desconectado. Tentando reconectar...', 'sistema');
+
+        if (dot) { dot.className = 'status-dot offline'; }
+        if (text) { text.textContent = 'Desconectado'; text.className = 'status-text offline'; }
+        if (input) { input.disabled = true; }
+        if (sendBtn) { sendBtn.disabled = true; }
+
+        adicionarMensagemChat('🔌 Desconectado. Tentando reconectar em 3s...', 'sistema');
         setTimeout(conectarWebSocket, 3000);
     };
 
@@ -252,10 +244,18 @@ function conectarWebSocket() {
 function adicionarMensagemChat(texto, classe = 'usuario') {
     const container = document.getElementById('chat-messages');
     if (!container) return;
-    
+
     const div = document.createElement('div');
     div.className = 'msg ' + classe;
-    div.textContent = texto;
+
+    if (classe === 'usuario') {
+        div.textContent = '👤 ' + texto;
+    } else if (classe === 'outro') {
+        div.textContent = texto;
+    } else {
+        div.textContent = texto;
+    }
+
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -263,17 +263,16 @@ function adicionarMensagemChat(texto, classe = 'usuario') {
 function enviarMensagemChat() {
     const input = document.getElementById('chat-input');
     if (!input) return;
-    
+
     const texto = input.value.trim();
     if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
 
     ws.send(texto);
-    adicionarMensagemChat('👤 ' + texto, 'usuario');
+    adicionarMensagemChat(texto, 'usuario');
     input.value = '';
     input.focus();
 }
 
-// Configura eventos do chat
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
 
@@ -286,7 +285,6 @@ if (chatSend) {
     chatSend.addEventListener('click', enviarMensagemChat);
 }
 
-// Inicia WebSocket se estiver na página do chat
 if (document.getElementById('chat-messages')) {
     conectarWebSocket();
 }
@@ -298,9 +296,9 @@ function testarAPI() {
     const bodyInput = document.getElementById('api-body');
     const responseDiv = document.getElementById('api-response-content');
     const statusDiv = document.getElementById('api-response-status');
-    
+
     if (!method || !endpointInput || !responseDiv) return;
-    
+
     const methodValue = method.value;
     let endpoint = endpointInput.value;
     const body = bodyInput ? bodyInput.value : '';
@@ -354,7 +352,6 @@ function testarAPI() {
         });
 }
 
-// Mostrar/esconder campo de corpo da API
 const apiMethod = document.getElementById('api-method');
 if (apiMethod) {
     apiMethod.addEventListener('change', function() {
@@ -372,17 +369,17 @@ if (apiMethod) {
 // ============ CONTATO ============
 function enviarContato(event) {
     event.preventDefault();
-    
+
     const nome = document.getElementById('nome');
     const email = document.getElementById('email');
     const assunto = document.getElementById('assunto');
     const mensagem = document.getElementById('mensagem');
-    
+
     if (!nome || !email || !assunto || !mensagem) return;
-    
+
     const btn = event.target.querySelector('.btn');
     if (!btn) return;
-    
+
     const textoOriginal = btn.textContent;
     btn.textContent = '⏳ Enviando...';
     btn.disabled = true;
@@ -403,9 +400,9 @@ function enviarContato(event) {
         btn.style.background = '#a6e3a1';
         btn.style.color = '#0f0a12';
         btn.style.boxShadow = '0 0 40px rgba(166, 227, 161, 0.5)';
-        
+
         event.target.reset();
-        
+
         setTimeout(() => {
             btn.textContent = textoOriginal;
             btn.style.background = '';
