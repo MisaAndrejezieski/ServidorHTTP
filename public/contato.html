@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contato | Misael Andrejezieski</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="particles"></canvas>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="logo">🚀</span>
+                <span class="glitch-text" data-text="Misael">Misael</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/projetos">Projetos</a></li>
+                <li><a href="/contato" class="active">Contato</a></li>
+            </ul>
+            <div class="nav-status">
+                <span class="status-dot online"></span>
+                <span class="neon-text">#Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section style="text-align: center; padding: 20px 0;">
+            <h1 class="neon-title" style="font-size: 2.8em; margin-bottom: 10px;">✉ Contato</h1>
+            <p style="color: #c8bdd0; font-size: 1.1em;">Vamos conversar! Me envie uma mensagem</p>
+        </section>
+
+        <div class="contato-container neon-card">
+            <form class="contato-form" onsubmit="enviarContato(event)">
+                <div class="form-group">
+                    <label for="nome">Nome</label>
+                    <input type="text" id="nome" placeholder="Seu nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" placeholder="seu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="assunto">Assunto</label>
+                    <input type="text" id="assunto" placeholder="Assunto da mensagem" required>
+                </div>
+                <div class="form-group">
+                    <label for="mensagem">Mensagem</label>
+                    <textarea id="mensagem" placeholder="Sua mensagem..." required></textarea>
+                </div>
+                <button type="submit" class="btn neon-btn-primary">
