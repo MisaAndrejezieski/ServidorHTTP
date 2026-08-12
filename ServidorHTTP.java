@@ -23,12 +23,10 @@ public class ServidorHTTP {
     private static final String DIRETORIO_PUBLICO = "./public";
     private static final Map<String, String> TIPOS_MIME = new HashMap<>();
 
-    // Gerenciamento de sessões
     private static final Map<String, Map<String, Object>> SESSOES = new ConcurrentHashMap<>();
     private static final Map<String, Long> SESSOES_EXPIRACAO = new ConcurrentHashMap<>();
-    private static final long TEMPO_EXPIRACAO_SESSAO = 30 * 60 * 1000; // 30 minutos
+    private static final long TEMPO_EXPIRACAO_SESSAO = 30 * 60 * 1000;
 
-    // WebSockets
     private static final Map<String, WebSocketConnection> WEBSOCKETS = new ConcurrentHashMap<>();
     private static int websocketIdCounter = 0;
 
@@ -59,13 +57,13 @@ public class ServidorHTTP {
             System.out.println("🧵 Multi-thread com pool dinâmico");
             System.out.println("🍪 Cookies e Sessões ativos");
             System.out.println("🔌 WebSockets disponíveis em: ws://localhost:" + PORTA + "/ws");
+            System.out.println("📄 Páginas: / (home) | /projetos | /contato");
             System.out.println("⏹️  Pressione CTRL+C para parar\n");
 
-            // Thread para limpar sessões expiradas
             Thread cleaner = new Thread(() -> {
                 while (true) {
                     try {
-                        Thread.sleep(60000); // A cada minuto
+                        Thread.sleep(60000);
                         limparSessoesExpiradas();
                     } catch (InterruptedException e) {
                         break;
@@ -85,9 +83,7 @@ public class ServidorHTTP {
                     } finally {
                         try {
                             cliente.close();
-                        } catch (IOException e) {
-                            // Ignora
-                        }
+                        } catch (IOException e) {}
                     }
                 });
             }
@@ -116,7 +112,6 @@ public class ServidorHTTP {
         String[] caminhoParts = caminho.split("\\?");
         String caminhoBase = caminhoParts[0];
 
-        // Lê cabeçalhos
         Map<String, String> cabecalhos = new HashMap<>();
         while ((linha = in.readLine()) != null && !linha.isEmpty()) {
             String[] chaveValor = linha.split(": ", 2);
@@ -125,7 +120,6 @@ public class ServidorHTTP {
             }
         }
 
-        // Lê corpo
         StringBuilder corpo = new StringBuilder();
         if (cabecalhos.containsKey("Content-Length")) {
             int contentLength = Integer.parseInt(cabecalhos.get("Content-Length"));
@@ -134,16 +128,13 @@ public class ServidorHTTP {
             }
         }
 
-        // Verifica WebSocket
         if (cabecalhos.containsKey("Upgrade") && cabecalhos.get("Upgrade").equalsIgnoreCase("websocket")) {
             handleWebSocket(cliente, cabecalhos);
             return;
         }
 
-        // Processa cookies
         Map<String, String> cookies = parseCookies(cabecalhos.getOrDefault("Cookie", ""));
 
-        // Gerencia sessão
         String sessionId = cookies.get("SESSION_ID");
         Map<String, Object> sessao = getSession(sessionId);
         if (sessao == null) {
@@ -153,10 +144,9 @@ public class ServidorHTTP {
             SESSOES_EXPIRACAO.put(sessionId, System.currentTimeMillis() + TEMPO_EXPIRACAO_SESSAO);
         }
 
-        // Atualiza expiração
         SESSOES_EXPIRACAO.put(sessionId, System.currentTimeMillis() + TEMPO_EXPIRACAO_SESSAO);
 
-        // Roteamento
+        // ============ ROTEAMENTO ============
         String response;
         if (caminhoBase.equals("/") || caminhoBase.equals("/index.html")) {
             response = servirArquivo("/index.html");
@@ -168,11 +158,14 @@ public class ServidorHTTP {
             response = mostrarSessao(sessao);
         } else if (caminhoBase.equals("/ws")) {
             response = servirArquivo("/websocket.html");
+        } else if (caminhoBase.equals("/projetos")) {
+            response = servirArquivo("/projetos.html");
+        } else if (caminhoBase.equals("/contato")) {
+            response = servirArquivo("/contato.html");
         } else {
             response = servirArquivo(caminhoBase);
         }
 
-        // Adiciona cookie de sessão se for nova
         if (response != null && !response.isEmpty() && !response.contains("Set-Cookie")) {
             String cookieHeader = "Set-Cookie: SESSION_ID=" + sessionId + "; Path=/; HttpOnly\r\n";
             int headerEnd = response.indexOf("\r\n\r\n");
@@ -188,11 +181,9 @@ public class ServidorHTTP {
     }
 
     // ==================== COOKIES ====================
-
     private static Map<String, String> parseCookies(String cookieStr) {
         Map<String, String> cookies = new HashMap<>();
         if (cookieStr == null || cookieStr.isEmpty()) return cookies;
-
         for (String cookie : cookieStr.split("; ")) {
             String[] parts = cookie.split("=", 2);
             if (parts.length == 2) {
@@ -203,7 +194,6 @@ public class ServidorHTTP {
     }
 
     // ==================== SESSÕES ====================
-
     private static String gerarSessionId() {
         return UUID.randomUUID().toString().replace("-", "");
     }
@@ -234,12 +224,9 @@ public class ServidorHTTP {
     }
 
     // ==================== WEB SOCKETS ====================
-
     private static void handleWebSocket(Socket cliente, Map<String, String> cabecalhos) throws IOException {
         String key = cabecalhos.get("Sec-WebSocket-Key");
-        if (key == null) {
-            return;
-        }
+        if (key == null) return;
 
         String accept = base64Encode(sha1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
         String response = "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -257,8 +244,8 @@ public class ServidorHTTP {
 
         System.out.println("🔌 WebSocket conectado: " + wsId + " (Total: " + WEBSOCKETS.size() + ")");
 
-        ws.sendMessage("Bem-vindo ao WebSocket! ID: " + wsId);
-        broadcast("🔵 Usuário " + wsId + " entrou no chat!");
+        ws.sendMessage("✦ Bem-vindo ao chat neon, " + ws.getNome() + "!");
+        broadcast("🌸 " + ws.getNome() + " entrou no chat!");
 
         try {
             while (true) {
@@ -282,21 +269,21 @@ public class ServidorHTTP {
                         case "/sair":
                             ws.sendMessage("👋 Saindo...");
                             WEBSOCKETS.remove(wsId);
-                            broadcast("🔴 Usuário " + wsId + " saiu do chat.");
+                            broadcast("🌙 " + ws.getNome() + " saiu do chat.");
                             ws.close();
                             return;
                         default:
-                            ws.sendMessage("❌ Comando desconhecido. Comandos: /nick, /ping, /sair");
+                            ws.sendMessage("❌ Comandos: /nick, /ping, /sair");
                     }
                 } else {
                     broadcast("💬 " + ws.getNome() + ": " + mensagem);
                 }
             }
         } catch (IOException e) {
-            System.err.println("⚠️ WebSocket " + wsId + " desconectado: " + e.getMessage());
+            System.err.println("⚠️ WebSocket " + wsId + " desconectado");
         } finally {
             WEBSOCKETS.remove(wsId);
-            broadcast("🔴 Usuário " + wsId + " saiu do chat.");
+            broadcast("🌙 " + ws.getNome() + " saiu do chat.");
             ws.close();
             System.out.println("🔌 WebSocket desconectado: " + wsId + " (Total: " + WEBSOCKETS.size() + ")");
         }
@@ -306,9 +293,7 @@ public class ServidorHTTP {
         for (WebSocketConnection ws : WEBSOCKETS.values()) {
             try {
                 ws.sendMessage(mensagem);
-            } catch (IOException e) {
-                // Ignora
-            }
+            } catch (IOException e) {}
         }
     }
 
@@ -330,14 +315,12 @@ public class ServidorHTTP {
         private Socket socket;
         private InputStream in;
         private OutputStream out;
-        private String id;
         private String nome;
 
         public WebSocketConnection(Socket socket, String id) throws IOException {
             this.socket = socket;
             this.in = socket.getInputStream();
             this.out = socket.getOutputStream();
-            this.id = id;
             this.nome = "Anônimo-" + id.substring(0, 6);
         }
 
@@ -384,10 +367,7 @@ public class ServidorHTTP {
         public String readMessage() throws IOException {
             int b1 = in.read();
             if (b1 == -1) return null;
-
-            if ((b1 & 0x0F) == 0x08) {
-                return null;
-            }
+            if ((b1 & 0x0F) == 0x08) return null;
 
             int b2 = in.read();
             if (b2 == -1) return null;
@@ -425,14 +405,11 @@ public class ServidorHTTP {
         public void close() {
             try {
                 socket.close();
-            } catch (IOException e) {
-                // Ignora
-            }
+            } catch (IOException e) {}
         }
     }
 
     // ==================== SERVE ARQUIVOS ====================
-
     private static String servirArquivo(String caminho) throws IOException {
         File arquivo = new File(DIRETORIO_PUBLICO + caminho);
 
@@ -460,7 +437,6 @@ public class ServidorHTTP {
     }
 
     // ==================== API ====================
-
     private static String processarAPI(String metodo, String caminho, String corpo,
                                         Map<String, Object> sessao) throws IOException {
         String resposta = "";
@@ -506,10 +482,8 @@ public class ServidorHTTP {
                 resposta;
     }
 
-    // Converte Map para JSON manualmente (sem bibliotecas)
     private static String mapToJson(Map<String, Object> map) {
         if (map == null || map.isEmpty()) return "{}";
-
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -534,7 +508,6 @@ public class ServidorHTTP {
     }
 
     // ==================== STATUS ====================
-
     private static String enviarStatus() {
         return "HTTP/1.1 200 OK\r\n" +
                 "Content-Type: text/plain\r\n" +
@@ -546,7 +519,6 @@ public class ServidorHTTP {
     }
 
     // ==================== MOSTRAR SESSÃO ====================
-
     private static String mostrarSessao(Map<String, Object> sessao) {
         String html = "<html><body><h1>Sessão Atual</h1><pre>" + sessao + "</pre></body></html>";
         return "HTTP/1.1 200 OK\r\n" +
@@ -559,7 +531,6 @@ public class ServidorHTTP {
     }
 
     // ==================== ERROS ====================
-
     private static String enviarErro(int codigo, String mensagem) {
         String resposta = "<html><body><h1>" + codigo + " " + mensagem + "</h1><p>Servidor Java HTTP</p></body></html>";
         return "HTTP/1.1 " + codigo + " " + mensagem + "\r\n" +
@@ -572,11 +543,9 @@ public class ServidorHTTP {
     }
 
     // ==================== UTILITÁRIOS ====================
-
     private static String extrairParametro(String caminho, String parametro) {
         int idx = caminho.indexOf('?');
         if (idx == -1) return null;
-
         String query = caminho.substring(idx + 1);
         for (String par : query.split("&")) {
             String[] chaveValor = par.split("=");
@@ -594,12 +563,15 @@ public class ServidorHTTP {
             System.out.println("📁 Diretório 'public' criado.");
         }
 
-        criarIndexHtml();
-        criarWebSocketHtml();
-        criarExemploTxt();
+        // Cria os arquivos HTML se não existirem
+        criarArquivoIndex();
+        criarArquivoProjetos();
+        criarArquivoContato();
+        criarArquivoWebSocket();
+        criarArquivoExemplo();
     }
 
-    private static void criarIndexHtml() {
+    private static void criarArquivoIndex() {
         File index = new File(DIRETORIO_PUBLICO + "/index.html");
         if (!index.exists()) {
             try (FileWriter fw = new FileWriter(index)) {
@@ -608,136 +580,106 @@ public class ServidorHTTP {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>Servidor Java</title>
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body {
-                            font-family: 'Segoe UI', Arial, sans-serif;
-                            max-width: 1000px;
-                            margin: 50px auto;
-                            text-align: center;
-                            background: #f0f2f5;
-                            padding: 20px;
-                        }
-                        h1 { color: #2c3e50; font-size: 2.8em; margin-bottom: 10px; }
-                        .subtitle { color: #7f8c8d; font-size: 1.2em; margin-bottom: 30px; }
-                        .info {
-                            background: white;
-                            padding: 30px;
-                            border-radius: 15px;
-                            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-                            margin-bottom: 20px;
-                        }
-                        .badge {
-                            display: inline-block;
-                            background: #27ae60;
-                            color: white;
-                            padding: 8px 25px;
-                            border-radius: 20px;
-                            font-weight: bold;
-                            margin-bottom: 20px;
-                        }
-                        .grid {
-                            display: grid;
-                            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                            gap: 15px;
-                            margin: 20px 0;
-                        }
-                        .item {
-                            background: #f8f9fa;
-                            padding: 20px;
-                            border-radius: 10px;
-                            border: 1px solid #e9ecef;
-                        }
-                        .item strong { display: block; font-size: 1.3em; margin-bottom: 5px; color: #2c3e50; }
-                        .item a { color: #3498db; text-decoration: none; }
-                        .item a:hover { text-decoration: underline; }
-                        .footer { margin-top: 30px; color: #95a5a6; font-size: 0.9em; }
-                        .api-list { text-align: left; display: inline-block; margin: 15px auto; }
-                        .api-list li { margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 5px; }
-                        .api-list code { background: #2c3e50; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.9em; }
-                        .websocket-link {
-                            display: inline-block;
-                            background: #8e44ad;
-                            color: white;
-                            padding: 10px 30px;
-                            border-radius: 25px;
-                            text-decoration: none;
-                            font-weight: bold;
-                            margin: 10px 0;
-                        }
-                        .websocket-link:hover { background: #6c3483; }
-                    </style>
+                    <title>Misael Andrejezieski | Portfólio</title>
+                    <link rel="stylesheet" href="/style.css">
                 </head>
                 <body>
-                    <h1>🚀 Servidor Java</h1>
-                    <p class="subtitle">HTTP + WebSockets + Sessões + Cookies</p>
-
-                    <div class="info">
-                        <p><span class="badge">🟢 Online v3.0</span></p>
-                        <p>📁 Arquivos: <code>./public/</code></p>
-                        <p>🧵 Threads: pool dinâmico</p>
-                        <p>🍪 Cookies e Sessões ativos</p>
-                        <p>🔌 WebSockets: <strong id="ws-count">0</strong> conexões ativas</p>
-
-                        <div class="grid">
-                            <div class="item">
-                                <strong>📄 Arquivos</strong>
-                                HTML, CSS, JS, imagens
+                    <canvas id="particles"></canvas>
+                    <nav class="navbar">
+                        <div class="nav-container">
+                            <div class="nav-brand">
+                                <span class="logo">🚀</span>
+                                <span class="glitch-text" data-text="Misael">Misael</span>
                             </div>
-                            <div class="item">
-                                <strong>⚡ API REST</strong>
-                                Endpoints JSON
-                            </div>
-                            <div class="item">
-                                <strong>🔌 WebSocket</strong>
-                                Chat em tempo real
-                            </div>
-                            <div class="item">
-                                <strong>🍪 Sessão</strong>
-                                Dados persistentes
+                            <ul class="nav-menu">
+                                <li><a href="/" class="active">Home</a></li>
+                                <li><a href="/projetos">Projetos</a></li>
+                                <li><a href="/contato">Contato</a></li>
+                            </ul>
+                            <div class="nav-status">
+                                <span class="status-dot online"></span>
+                                <span class="neon-text">#Online</span>
                             </div>
                         </div>
-                    </div>
+                    </nav>
+                    <main>
+                        <section class="hero">
+                            <div class="hero-content">
+                                <div class="hero-badge">
+                                    <span class="neon-badge">✦ Disponível para trabalho</span>
+                                </div>
+                                <h1 class="hero-title">
+                                    <span class="neon-text-pink">Misael</span>
+                                    <span class="neon-text-blue">Andrejezieski</span>
+                                </h1>
+                                <h2 class="hero-subtitle">
+                                    <span class="neon-text-cyan">Analista</span>
+                                    <span class="neon-text-purple">|</span>
+                                    <span class="neon-text-green">Desenvolvedor</span>
+                                    <span class="neon-text-purple">|</span>
+                                    <span class="neon-text-yellow">Sistemas</span>
+                                </h2>
+                                <p class="hero-description">
+                                    Formado em <strong>Análise e Desenvolvimento de Sistemas</strong> pela <strong>Unicesumar</strong>.
+                                    Construindo soluções com código, criatividade e propósito.
+                                </p>
+                                <div class="hero-buttons">
+                                    <a href="/projetos" class="btn neon-btn-primary">✦ Ver Projetos</a>
+                                    <a href="/contato" class="btn neon-btn-secondary">✉ Contato</a>
+                                </div>
+                            </div>
+                            <div class="hero-illustration">
+                                <div class="neon-orb pink"></div>
+                                <div class="neon-orb cyan"></div>
+                                <div class="neon-orb purple"></div>
+                            </div>
+                        </section>
 
-                    <div class="info">
-                        <h3>🔗 Endpoints</h3>
-                        <ul class="api-list">
-                            <li><a href="/">/</a> - Página inicial</li>
-                            <li><a href="/status">/status</a> - Status</li>
-                            <li><a href="/sessao">/sessao</a> - Ver sessão</li>
-                            <li><a href="/api/hello?nome=Java">/api/hello?nome=Java</a> - Saudação</li>
-                            <li><a href="/api/hora">/api/hora</a> - Hora</li>
-                            <li><a href="/api/data">/api/data</a> - Data</li>
-                            <li><a href="/api/contador">/api/contador</a> - Contador (sessão)</li>
-                            <li><a href="/api/status">/api/status</a> - Status JSON</li>
-                        </ul>
-                    </div>
+                        <section class="skills">
+                            <h2 class="neon-subtitle">⚡ Tecnologias</h2>
+                            <div class="skills-grid">
+                                <span class="skill-tag neon-tag">Java</span>
+                                <span class="skill-tag neon-tag">C#</span>
+                                <span class="skill-tag neon-tag">.NET</span>
+                                <span class="skill-tag neon-tag">JavaScript</span>
+                                <span class="skill-tag neon-tag">HTML + CSS</span>
+                                <span class="skill-tag neon-tag">SQL</span>
+                                <span class="skill-tag neon-tag">Git</span>
+                                <span class="skill-tag neon-tag">Linux</span>
+                            </div>
+                        </section>
 
-                    <div class="info">
-                        <h3>🔌 WebSocket Chat</h3>
-                        <p>Clique no botão abaixo para abrir o chat em tempo real:</p>
-                        <a href="/ws" class="websocket-link">💬 Abrir Chat</a>
-                        <p style="margin-top: 10px; font-size: 0.9em; color: #7f8c8d;">
-                            Comandos: <code>/nick [nome]</code> | <code>/ping</code> | <code>/sair</code>
-                        </p>
-                    </div>
+                        <section class="highlights">
+                            <h2 class="neon-subtitle">🌟 Destaques</h2>
+                            <div class="highlights-grid">
+                                <div class="highlight-card neon-card">
+                                    <span class="highlight-icon">🚀</span>
+                                    <h3>Servidor HTTP + WebSocket</h3>
+                                    <p>Construído em Java puro, com sessões, cookies e chat em tempo real.</p>
+                                </div>
+                                <div class="highlight-card neon-card">
+                                    <span class="highlight-icon">🧠</span>
+                                    <h3>Interpretador Brainfuck</h3>
+                                    <p>Linguagem esotérica Turing-completa implementada do zero.</p>
+                                </div>
+                                <div class="highlight-card neon-card">
+                                    <span class="highlight-icon">🌀</span>
+                                    <h3>Labirinto 3D</h3>
+                                    <p>Geração procedural e pathfinding com A* em Java.</p>
+                                </div>
+                            </div>
+                        </section>
 
-                    <div class="footer">
-                        <p>🔧 Servidor Java puro - sem frameworks</p>
-                        <p>Versão 3.0 com WebSockets, Cookies e Sessões</p>
-                    </div>
-
-                    <script>
-                        setInterval(() => {
-                            fetch('/api/websockets')
-                                .then(r => r.json())
-                                .then(data => {
-                                    document.getElementById('ws-count').textContent = data.total;
-                                })
-                                .catch(() => {});
-                        }, 2000);
-                    </script>
+                        <footer class="neon-footer">
+                            <p>✦ Misael Andrejezieski ✦ 2026</p>
+                            <div class="footer-links">
+                                <a href="https://github.com" target="_blank" class="neon-link-footer">GitHub</a>
+                                <a href="https://linkedin.com" target="_blank" class="neon-link-footer">LinkedIn</a>
+                                <a href="/contato" class="neon-link-footer">Contato</a>
+                            </div>
+                        </footer>
+                    </main>
+                    <script src="/script.js"></script>
                 </body>
                 </html>
                 """);
@@ -748,121 +690,271 @@ public class ServidorHTTP {
         }
     }
 
-    private static void criarWebSocketHtml() {
-        File wsHtml = new File(DIRETORIO_PUBLICO + "/websocket.html");
-        if (!wsHtml.exists()) {
-            try (FileWriter fw = new FileWriter(wsHtml)) {
+    private static void criarArquivoProjetos() {
+        File file = new File(DIRETORIO_PUBLICO + "/projetos.html");
+        if (!file.exists()) {
+            try (FileWriter fw = new FileWriter(file)) {
+                fw.write("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Projetos | Misael Andrejezieski</title>
+                    <link rel="stylesheet" href="/style.css">
+                </head>
+                <body>
+                    <canvas id="particles"></canvas>
+                    <nav class="navbar">
+                        <div class="nav-container">
+                            <div class="nav-brand">
+                                <span class="logo">🚀</span>
+                                <span class="glitch-text" data-text="Misael">Misael</span>
+                            </div>
+                            <ul class="nav-menu">
+                                <li><a href="/">Home</a></li>
+                                <li><a href="/projetos" class="active">Projetos</a></li>
+                                <li><a href="/contato">Contato</a></li>
+                            </ul>
+                            <div class="nav-status">
+                                <span class="status-dot online"></span>
+                                <span class="neon-text">#Online</span>
+                            </div>
+                        </div>
+                    </nav>
+                    <main>
+                        <section style="text-align: center; padding: 20px 0;">
+                            <h1 class="neon-title" style="font-size: 2.8em; margin-bottom: 10px;">✦ Projetos</h1>
+                            <p style="color: #c8bdd0; font-size: 1.1em;">Alguns dos projetos que construí</p>
+                        </section>
+                        <div class="projetos-grid">
+                            <div class="projeto-card neon-card">
+                                <div class="projeto-icon">🚀</div>
+                                <h3>Servidor HTTP + WebSocket</h3>
+                                <p>Servidor construído em Java puro, com suporte a arquivos estáticos, API REST, sessões com cookies e WebSockets para chat em tempo real.</p>
+                                <div class="projeto-tags">
+                                    <span>Java</span>
+                                    <span>Sockets</span>
+                                    <span>WebSocket</span>
+                                </div>
+                                <a href="#" class="projeto-link">Ver mais →</a>
+                            </div>
+                            <div class="projeto-card neon-card">
+                                <div class="projeto-icon">🧠</div>
+                                <h3>Interpretador Brainfuck</h3>
+                                <p>Interpretador da linguagem esotérica Brainfuck, com suporte a loops, entrada/saída e memória de 30.000 bytes. Turing-completo!</p>
+                                <div class="projeto-tags">
+                                    <span>Java</span>
+                                    <span>Linguagens</span>
+                                    <span>Compiladores</span>
+                                </div>
+                                <a href="#" class="projeto-link">Ver mais →</a>
+                            </div>
+                            <div class="projeto-card neon-card">
+                                <div class="projeto-icon">🌀</div>
+                                <h3>Labirinto 3D com A*</h3>
+                                <p>Gerador de labirintos procedurais com visualização 3D no terminal usando raycasting simples. Inclui resolução automática com A*.</p>
+                                <div class="projeto-tags">
+                                    <span>Java</span>
+                                    <span>Algoritmos</span>
+                                    <span>3D</span>
+                                </div>
+                                <a href="#" class="projeto-link">Ver mais →</a>
+                            </div>
+                            <div class="projeto-card neon-card">
+                                <div class="projeto-icon">🌐</div>
+                                <h3>Portfólio Neon</h3>
+                                <p>Este site! Portfólio com tema neon pastel, servido pelo próprio servidor HTTP em Java. Inclui efeitos de partículas e glitch.</p>
+                                <div class="projeto-tags">
+                                    <span>HTML</span>
+                                    <span>CSS</span>
+                                    <span>JS</span>
+                                </div>
+                                <a href="#" class="projeto-link">Ver mais →</a>
+                            </div>
+                        </div>
+                        <footer class="neon-footer">
+                            <p>✦ Misael Andrejezieski ✦ 2026</p>
+                            <div class="footer-links">
+                                <a href="https://github.com" target="_blank" class="neon-link-footer">GitHub</a>
+                                <a href="https://linkedin.com" target="_blank" class="neon-link-footer">LinkedIn</a>
+                                <a href="/contato" class="neon-link-footer">Contato</a>
+                            </div>
+                        </footer>
+                    </main>
+                    <script src="/script.js"></script>
+                </body>
+                </html>
+                """);
+                System.out.println("📄 projetos.html criado em ./public/");
+            } catch (IOException e) {
+                System.err.println("⚠️ Erro ao criar projetos.html: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void criarArquivoContato() {
+        File file = new File(DIRETORIO_PUBLICO + "/contato.html");
+        if (!file.exists()) {
+            try (FileWriter fw = new FileWriter(file)) {
+                fw.write("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Contato | Misael Andrejezieski</title>
+                    <link rel="stylesheet" href="/style.css">
+                </head>
+                <body>
+                    <canvas id="particles"></canvas>
+                    <nav class="navbar">
+                        <div class="nav-container">
+                            <div class="nav-brand">
+                                <span class="logo">🚀</span>
+                                <span class="glitch-text" data-text="Misael">Misael</span>
+                            </div>
+                            <ul class="nav-menu">
+                                <li><a href="/">Home</a></li>
+                                <li><a href="/projetos">Projetos</a></li>
+                                <li><a href="/contato" class="active">Contato</a></li>
+                            </ul>
+                            <div class="nav-status">
+                                <span class="status-dot online"></span>
+                                <span class="neon-text">#Online</span>
+                            </div>
+                        </div>
+                    </nav>
+                    <main>
+                        <section style="text-align: center; padding: 20px 0;">
+                            <h1 class="neon-title" style="font-size: 2.8em; margin-bottom: 10px;">✉ Contato</h1>
+                            <p style="color: #c8bdd0; font-size: 1.1em;">Vamos conversar! Me envie uma mensagem</p>
+                        </section>
+                        <div class="contato-container neon-card">
+                            <form class="contato-form" onsubmit="enviarContato(event)">
+                                <div class="form-group">
+                                    <label for="nome">Nome</label>
+                                    <input type="text" id="nome" placeholder="Seu nome" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">E-mail</label>
+                                    <input type="email" id="email" placeholder="seu@email.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="assunto">Assunto</label>
+                                    <input type="text" id="assunto" placeholder="Assunto da mensagem" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mensagem">Mensagem</label>
+                                    <textarea id="mensagem" placeholder="Sua mensagem..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn neon-btn-primary">✦ Enviar mensagem</button>
+                            </form>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <p style="color: #9a8aa2;">Ou me encontre em:</p>
+                            <div style="display: flex; gap: 20px; justify-content: center; margin-top: 12px; flex-wrap: wrap;">
+                                <a href="https://github.com" target="_blank" class="neon-link-footer" style="font-size: 1.1em;">🐙 GitHub</a>
+                                <a href="https://linkedin.com" target="_blank" class="neon-link-footer" style="font-size: 1.1em;">🔗 LinkedIn</a>
+                                <a href="mailto:misael@email.com" class="neon-link-footer" style="font-size: 1.1em;">📧 E-mail</a>
+                            </div>
+                        </div>
+                        <footer class="neon-footer">
+                            <p>✦ Misael Andrejezieski ✦ 2026</p>
+                            <div class="footer-links">
+                                <a href="https://github.com" target="_blank" class="neon-link-footer">GitHub</a>
+                                <a href="https://linkedin.com" target="_blank" class="neon-link-footer">LinkedIn</a>
+                                <a href="/contato" class="neon-link-footer">Contato</a>
+                            </div>
+                        </footer>
+                    </main>
+                    <script src="/script.js"></script>
+                </body>
+                </html>
+                """);
+                System.out.println("📄 contato.html criado em ./public/");
+            } catch (IOException e) {
+                System.err.println("⚠️ Erro ao criar contato.html: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void criarArquivoWebSocket() {
+        File file = new File(DIRETORIO_PUBLICO + "/websocket.html");
+        if (!file.exists()) {
+            try (FileWriter fw = new FileWriter(file)) {
                 fw.write("""
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="UTF-8">
                     <title>Chat WebSocket</title>
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body {
-                            font-family: 'Segoe UI', Arial, sans-serif;
-                            max-width: 800px;
-                            margin: 30px auto;
-                            padding: 20px;
-                            background: #f0f2f5;
-                        }
-                        h1 { color: #2c3e50; margin-bottom: 10px; }
-                        .status {
-                            padding: 10px 20px;
-                            border-radius: 10px;
-                            margin-bottom: 20px;
-                            font-weight: bold;
-                        }
-                        .status.conectado { background: #d5f5e3; color: #1a7a42; }
-                        .status.desconectado { background: #fadbd8; color: #922b21; }
-                        #chat {
-                            background: white;
-                            border-radius: 15px;
-                            padding: 20px;
-                            height: 400px;
-                            overflow-y: auto;
-                            margin-bottom: 20px;
-                            border: 1px solid #ddd;
-                        }
-                        #chat .msg {
-                            padding: 8px 12px;
-                            margin: 5px 0;
-                            border-radius: 10px;
-                            animation: fadeIn 0.3s;
-                        }
-                        #chat .msg.sistema { background: #e8daef; color: #6c3483; }
-                        #chat .msg.usuario { background: #d6eaf8; color: #1a5276; }
-                        #chat .msg.outro { background: #f0f0f0; color: #2c3e50; }
-                        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-                        .input-area {
-                            display: flex;
-                            gap: 10px;
-                        }
-                        #input {
-                            flex: 1;
-                            padding: 12px 20px;
-                            border: 2px solid #ddd;
-                            border-radius: 25px;
-                            font-size: 16px;
-                            outline: none;
-                            transition: border-color 0.3s;
-                        }
-                        #input:focus { border-color: #3498db; }
-                        #enviar {
-                            padding: 12px 30px;
-                            background: #3498db;
-                            color: white;
-                            border: none;
-                            border-radius: 25px;
-                            font-size: 16px;
-                            cursor: pointer;
-                            transition: background 0.3s;
-                        }
-                        #enviar:hover { background: #2471a3; }
-                        #enviar:disabled { opacity: 0.5; cursor: not-allowed; }
-                        .comandos {
-                            margin-top: 10px;
-                            color: #7f8c8d;
-                            font-size: 0.9em;
-                        }
-                        .comandos code { background: #ecf0f1; padding: 2px 8px; border-radius: 4px; }
-                        .voltar {
-                            display: inline-block;
-                            margin-top: 15px;
-                            color: #3498db;
-                            text-decoration: none;
-                        }
-                        .voltar:hover { text-decoration: underline; }
-                    </style>
+                    <link rel="stylesheet" href="/style.css">
                 </head>
                 <body>
-                    <h1>💬 Chat WebSocket</h1>
-                    <div id="status" class="status desconectado">🔴 Desconectado</div>
-                    <div id="chat"></div>
-                    <div class="input-area">
-                        <input type="text" id="input" placeholder="Digite sua mensagem..." disabled>
-                        <button id="enviar" disabled>Enviar</button>
-                    </div>
-                    <div class="comandos">
-                        Comandos: <code>/nick [nome]</code> - mudar nome | <code>/ping</code> - testar | <code>/sair</code> - sair
-                    </div>
-                    <a href="/" class="voltar">← Voltar para o início</a>
-
+                    <canvas id="particles"></canvas>
+                    <nav class="navbar">
+                        <div class="nav-container">
+                            <div class="nav-brand">
+                                <span class="logo">🚀</span>
+                                <span class="glitch-text" data-text="Chat">Chat Neon</span>
+                            </div>
+                            <ul class="nav-menu">
+                                <li><a href="/">Home</a></li>
+                                <li><a href="/projetos">Projetos</a></li>
+                                <li><a href="/contato">Contato</a></li>
+                            </ul>
+                            <div class="nav-status">
+                                <span id="chat-status-indicator" class="status-dot offline"></span>
+                                <span id="chat-status-text" class="neon-text">Desconectado</span>
+                            </div>
+                        </div>
+                    </nav>
+                    <main>
+                        <section style="text-align: center; padding: 20px 0;">
+                            <h1 class="neon-title" style="font-size: 2.8em; margin-bottom: 10px;">💬 Chat Neon</h1>
+                            <p style="color: #c8bdd0; font-size: 1.1em;">Conecte-se e converse em tempo real</p>
+                        </section>
+                        <div class="chat-container neon-card" style="max-width: 800px; margin: 0 auto;">
+                            <div id="chat-messages" class="chat-messages" style="height: 400px;"></div>
+                            <div class="chat-input-area">
+                                <input type="text" id="chat-input" placeholder="⚡ Digite sua mensagem..." disabled>
+                                <button id="chat-send" class="neon-btn" disabled>✨ Enviar</button>
+                            </div>
+                            <div class="chat-commands">
+                                💡 Comandos: <code class="neon-code">/nick [nome]</code> | <code class="neon-code">/ping</code> | <code class="neon-code">/sair</code>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <a href="/" class="neon-link-footer">← Voltar para Home</a>
+                        </div>
+                        <footer class="neon-footer">
+                            <p>✦ Misael Andrejezieski ✦ 2026</p>
+                        </footer>
+                    </main>
                     <script>
+                        // Script do chat via WebSocket
                         let ws = null;
-                        const chat = document.getElementById('chat');
-                        const input = document.getElementById('input');
-                        const enviar = document.getElementById('enviar');
-                        const statusDiv = document.getElementById('status');
+                        const chat = document.getElementById('chat-messages');
+                        const input = document.getElementById('chat-input');
+                        const enviar = document.getElementById('chat-send');
+                        const statusDot = document.getElementById('chat-status-indicator');
+                        const statusText = document.getElementById('chat-status-text');
+
+                        function adicionarMensagem(texto, classe = 'outro') {
+                            const div = document.createElement('div');
+                            div.className = 'msg ' + classe;
+                            div.textContent = texto;
+                            chat.appendChild(div);
+                            chat.scrollTop = chat.scrollHeight;
+                        }
 
                         function conectar() {
                             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                             ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
 
                             ws.onopen = function() {
-                                statusDiv.className = 'status conectado';
-                                statusDiv.textContent = '🟢 Conectado';
+                                statusDot.className = 'status-dot online';
+                                statusText.textContent = 'Conectado';
+                                statusText.className = 'neon-text';
                                 input.disabled = false;
                                 enviar.disabled = false;
                                 input.focus();
@@ -874,11 +966,11 @@ public class ServidorHTTP {
                             };
 
                             ws.onclose = function() {
-                                statusDiv.className = 'status desconectado';
-                                statusDiv.textContent = '🔴 Desconectado';
+                                statusDot.className = 'status-dot offline';
+                                statusText.textContent = 'Desconectado';
                                 input.disabled = true;
                                 enviar.disabled = true;
-                                adicionarMensagem('🔌 Desconectado do servidor.', 'sistema');
+                                adicionarMensagem('🔌 Desconectado. Tentando reconectar...', 'sistema');
                                 setTimeout(conectar, 3000);
                             };
 
@@ -887,18 +979,9 @@ public class ServidorHTTP {
                             };
                         }
 
-                        function adicionarMensagem(texto, classe = 'usuario') {
-                            const div = document.createElement('div');
-                            div.className = 'msg ' + classe;
-                            div.textContent = texto;
-                            chat.appendChild(div);
-                            chat.scrollTop = chat.scrollHeight;
-                        }
-
                         function enviarMensagem() {
                             const texto = input.value.trim();
                             if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
-
                             ws.send(texto);
                             adicionarMensagem('👤 ' + texto, 'usuario');
                             input.value = '';
@@ -908,7 +991,6 @@ public class ServidorHTTP {
                         input.addEventListener('keydown', function(e) {
                             if (e.key === 'Enter') enviarMensagem();
                         });
-
                         enviar.addEventListener('click', enviarMensagem);
 
                         conectar();
@@ -923,10 +1005,10 @@ public class ServidorHTTP {
         }
     }
 
-    private static void criarExemploTxt() {
-        File exemplo = new File(DIRETORIO_PUBLICO + "/exemplo.txt");
-        if (!exemplo.exists()) {
-            try (FileWriter fw = new FileWriter(exemplo)) {
+    private static void criarArquivoExemplo() {
+        File file = new File(DIRETORIO_PUBLICO + "/exemplo.txt");
+        if (!file.exists()) {
+            try (FileWriter fw = new FileWriter(file)) {
                 fw.write("""
                 Servidor HTTP/WebSocket em Java
                 ================================
@@ -934,27 +1016,13 @@ public class ServidorHTTP {
                 Versão: 3.0
                 Data: """ + new Date() + """
 
-                Funcionalidades:
-                ✅ Servir arquivos estáticos
-                ✅ API REST com JSON
-                ✅ WebSockets (chat em tempo real)
-                ✅ Cookies de sessão
-                ✅ Sessões persistentes
-                ✅ Multi-thread
+                Portfólio de Misael Andrejezieski
 
-                Endpoints:
-                - GET  /api/hello?nome=...  -> Saudação
-                - GET  /api/hora            -> Hora atual
-                - GET  /api/data            -> Data atual
-                - GET  /api/contador        -> Contador (sessão)
-                - GET  /api/status          -> Status do servidor
-                - GET  /api/websockets      -> Conexões WebSocket
-                - POST /api/echo            -> Ecoa o corpo
-                - POST /api/contato         -> Recebe contato
-
-                WebSocket:
-                - ws://localhost:8080/ws
-                - Comandos: /nick, /ping, /sair
+                Páginas:
+                - / (Home)
+                - /projetos
+                - /contato
+                - /ws (Chat WebSocket)
                 """);
             } catch (IOException e) {
                 System.err.println("⚠️ Erro ao criar exemplo.txt: " + e.getMessage());
