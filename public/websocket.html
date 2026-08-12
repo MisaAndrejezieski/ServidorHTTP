@@ -6,7 +6,6 @@
     <title>Chat Neon | Misael Andrejezieski</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Estilos específicos do chat */
         .chat-page {
             max-width: 800px;
             margin: 30px auto;
@@ -14,22 +13,18 @@
             position: relative;
             z-index: 1;
         }
-
         .chat-page .chat-header {
             text-align: center;
             margin-bottom: 30px;
         }
-
         .chat-page .chat-header h1 {
             font-size: 2.8em;
             margin-bottom: 5px;
         }
-
         .chat-page .chat-header p {
             color: #9a8aa2;
             font-size: 1.1em;
         }
-
         .chat-container {
             background: var(--bg-card);
             backdrop-filter: blur(10px);
@@ -38,7 +33,6 @@
             overflow: hidden;
             box-shadow: 0 0 40px rgba(255, 143, 171, 0.05);
         }
-
         .chat-status-bar {
             display: flex;
             align-items: center;
@@ -47,52 +41,43 @@
             border-bottom: 1px solid var(--border-card);
             background: rgba(0, 0, 0, 0.2);
         }
-
         .chat-status-bar .status-info {
             display: flex;
             align-items: center;
             gap: 12px;
             font-weight: 500;
         }
-
         .chat-status-bar .status-dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
             display: inline-block;
         }
-
         .chat-status-bar .status-dot.online {
             background: var(--neon-green);
             box-shadow: 0 0 20px var(--neon-green-glow);
             animation: pulse 1.5s ease-in-out infinite;
         }
-
         .chat-status-bar .status-dot.offline {
             background: #ff0044;
             box-shadow: 0 0 20px rgba(255, 0, 68, 0.3);
         }
-
         .chat-status-bar .status-text {
             color: #c8bdd0;
             font-size: 0.95em;
         }
-
         .chat-status-bar .status-text.online {
             color: var(--neon-green);
             text-shadow: 0 0 10px var(--neon-green-glow);
         }
-
         .chat-status-bar .status-text.offline {
             color: #ff0044;
         }
-
         .chat-status-bar .user-info {
             color: var(--neon-purple);
             font-size: 0.9em;
             text-shadow: 0 0 10px var(--neon-purple-glow);
         }
-
         #chat-messages {
             height: 420px;
             overflow-y: auto;
@@ -102,7 +87,6 @@
             flex-direction: column;
             gap: 4px;
         }
-
         #chat-messages::-webkit-scrollbar {
             width: 5px;
         }
@@ -114,7 +98,6 @@
             border-radius: 10px;
             box-shadow: 0 0 20px var(--neon-pink-glow);
         }
-
         .msg {
             padding: 8px 16px;
             border-radius: 14px;
@@ -124,7 +107,6 @@
             font-size: 0.95em;
             line-height: 1.5;
         }
-
         .msg.sistema {
             background: rgba(203, 166, 247, 0.15);
             color: var(--neon-purple);
@@ -136,7 +118,6 @@
             padding: 6px 18px;
             border-radius: 30px;
         }
-
         .msg.usuario {
             background: rgba(255, 143, 171, 0.15);
             color: var(--neon-pink);
@@ -145,7 +126,6 @@
             margin-left: auto;
             text-shadow: 0 0 10px var(--neon-pink-glow);
         }
-
         .msg.outro {
             background: rgba(137, 180, 250, 0.10);
             color: var(--neon-blue);
@@ -153,7 +133,6 @@
             align-self: flex-start;
             text-shadow: 0 0 10px var(--neon-blue-glow);
         }
-
         .chat-input-area {
             display: flex;
             gap: 12px;
@@ -161,7 +140,6 @@
             border-top: 1px solid var(--border-card);
             background: rgba(0, 0, 0, 0.15);
         }
-
         .chat-input-area input {
             flex: 1;
             padding: 12px 20px;
@@ -173,21 +151,17 @@
             outline: none;
             transition: all 0.3s;
         }
-
         .chat-input-area input:focus {
             border-color: var(--neon-pink);
             box-shadow: 0 0 30px var(--neon-pink-glow);
         }
-
         .chat-input-area input::placeholder {
             color: #6a5a72;
         }
-
         .chat-input-area input:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
-
         .chat-input-area button {
             padding: 12px 30px;
             border: none;
@@ -200,18 +174,15 @@
             color: #0f0a12;
             box-shadow: 0 0 30px var(--neon-pink-glow);
         }
-
         .chat-input-area button:hover:not(:disabled) {
             transform: scale(1.03);
             box-shadow: 0 0 50px var(--neon-pink-glow);
         }
-
         .chat-input-area button:disabled {
             opacity: 0.4;
             cursor: not-allowed;
             transform: none;
         }
-
         .chat-commands {
             padding: 10px 24px;
             border-top: 1px solid rgba(255, 143, 171, 0.05);
@@ -223,7 +194,6 @@
             gap: 12px;
             justify-content: center;
         }
-
         .chat-commands code {
             background: rgba(255, 143, 171, 0.08);
             color: var(--neon-pink);
@@ -232,35 +202,28 @@
             font-size: 0.85em;
             border: 1px solid rgba(255, 143, 171, 0.08);
         }
-
         .chat-commands .cmd-label {
             color: #6a5a72;
         }
-
         .chat-footer {
             text-align: center;
             padding: 20px;
             margin-top: 20px;
         }
-
         .chat-footer a {
             color: var(--neon-purple);
             text-decoration: none;
             text-shadow: 0 0 10px var(--neon-purple-glow);
             transition: all 0.3s;
         }
-
         .chat-footer a:hover {
             color: var(--neon-pink);
             text-shadow: 0 0 30px var(--neon-pink-glow);
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        /* Responsivo */
         @media (max-width: 600px) {
             .chat-page .chat-header h1 { font-size: 2em; }
             #chat-messages { height: 300px; padding: 14px; }
@@ -299,7 +262,6 @@
         </div>
 
         <div class="chat-container">
-            <!-- Status Bar -->
             <div class="chat-status-bar">
                 <div class="status-info">
                     <span id="chat-status-dot" class="status-dot offline"></span>
@@ -310,16 +272,13 @@
                 </div>
             </div>
 
-            <!-- Mensagens -->
             <div id="chat-messages"></div>
 
-            <!-- Input -->
             <div class="chat-input-area">
                 <input type="text" id="chat-input" placeholder="⚡ Digite sua mensagem..." disabled>
                 <button id="chat-send" disabled>✨ Enviar</button>
             </div>
 
-            <!-- Comandos -->
             <div class="chat-commands">
                 <span class="cmd-label">💡 Comandos:</span>
                 <code>/nick [nome]</code>
