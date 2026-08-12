@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
@@ -95,6 +96,7 @@ public class ServidorHTTP {
         }
     }
 
+    // ==================== HANDLE CONNECTION ====================
     private static void handleConnection(Socket cliente) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
         OutputStream out = cliente.getOutputStream();
@@ -120,17 +122,19 @@ public class ServidorHTTP {
             }
         }
 
+        // ============ VERIFICA WEBSOCKET PRIMEIRO ============
+        if (cabecalhos.containsKey("Upgrade") && cabecalhos.get("Upgrade").equalsIgnoreCase("websocket")) {
+            System.out.println("🔌 Handshake WebSocket detectado!");
+            handleWebSocket(cliente, cabecalhos);
+            return;
+        }
+
         StringBuilder corpo = new StringBuilder();
         if (cabecalhos.containsKey("Content-Length")) {
             int contentLength = Integer.parseInt(cabecalhos.get("Content-Length"));
             for (int i = 0; i < contentLength; i++) {
                 corpo.append((char) in.read());
             }
-        }
-
-        if (cabecalhos.containsKey("Upgrade") && cabecalhos.get("Upgrade").equalsIgnoreCase("websocket")) {
-            handleWebSocket(cliente, cabecalhos);
-            return;
         }
 
         Map<String, String> cookies = parseCookies(cabecalhos.getOrDefault("Cookie", ""));
@@ -224,11 +228,30 @@ public class ServidorHTTP {
     }
 
     // ==================== WEB SOCKETS ====================
+
+    private static String gerarAcceptWebSocket(String key) {
+        try {
+            String guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+            String concat = key + guid;
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
+            byte[] digest = md.digest(concat.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(digest);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "";
+        }
+    }
+
     private static void handleWebSocket(Socket cliente, Map<String, String> cabecalhos) throws IOException {
         String key = cabecalhos.get("Sec-WebSocket-Key");
-        if (key == null) return;
+        if (key == null) {
+            System.err.println("❌ WebSocket: Sec-WebSocket-Key não encontrada");
+            return;
+        }
 
-        String accept = base64Encode(sha1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
+        System.out.println("🔑 WebSocket Key: " + key);
+
+        String accept = gerarAcceptWebSocket(key);
+        
         String response = "HTTP/1.1 101 Switching Protocols\r\n" +
                 "Upgrade: websocket\r\n" +
                 "Connection: Upgrade\r\n" +
@@ -237,6 +260,8 @@ public class ServidorHTTP {
 
         cliente.getOutputStream().write(response.getBytes());
         cliente.getOutputStream().flush();
+        
+        System.out.println("✅ WebSocket handshake concluído!");
 
         String wsId = "ws-" + (++websocketIdCounter);
         WebSocketConnection ws = new WebSocketConnection(cliente, wsId);
@@ -297,20 +322,6 @@ public class ServidorHTTP {
         }
     }
 
-    private static String sha1(String input) {
-        try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
-            byte[] digest = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return new String(Base64.getEncoder().encode(digest), java.nio.charset.StandardCharsets.UTF_8);
-        } catch (java.security.NoSuchAlgorithmException e) {
-            return "";
-        }
-    }
-
-    private static String base64Encode(String input) {
-        return input;
-    }
-
     static class WebSocketConnection {
         private Socket socket;
         private InputStream in;
@@ -365,41 +376,54 @@ public class ServidorHTTP {
         }
 
         public String readMessage() throws IOException {
-            int b1 = in.read();
-            if (b1 == -1) return null;
-            if ((b1 & 0x0F) == 0x08) return null;
-
-            int b2 = in.read();
-            if (b2 == -1) return null;
-
-            boolean mascara = (b2 & 0x80) != 0;
-            int tamanho = b2 & 0x7F;
-
-            if (tamanho == 126) {
-                tamanho = (in.read() << 8) | in.read();
-            } else if (tamanho == 127) {
-                tamanho = 0;
-                for (int i = 0; i < 8; i++) {
-                    tamanho = (tamanho << 8) | in.read();
+            try {
+                int b1 = in.read();
+                if (b1 == -1) return null;
+                
+                if ((b1 & 0x0F) == 0x08) {
+                    return null;
                 }
-            }
-
-            byte[] mascaraBytes = null;
-            if (mascara) {
-                mascaraBytes = new byte[4];
-                in.read(mascaraBytes);
-            }
-
-            byte[] dados = new byte[tamanho];
-            in.read(dados);
-
-            if (mascara && mascaraBytes != null) {
-                for (int i = 0; i < dados.length; i++) {
-                    dados[i] ^= mascaraBytes[i % 4];
+                
+                int b2 = in.read();
+                if (b2 == -1) return null;
+                
+                boolean mascara = (b2 & 0x80) != 0;
+                int tamanho = b2 & 0x7F;
+                
+                if (tamanho == 126) {
+                    tamanho = (in.read() << 8) | in.read();
+                } else if (tamanho == 127) {
+                    tamanho = 0;
+                    for (int i = 0; i < 8; i++) {
+                        tamanho = (tamanho << 8) | in.read();
+                    }
                 }
+                
+                byte[] mascaraBytes = null;
+                if (mascara) {
+                    mascaraBytes = new byte[4];
+                    int lidos = in.read(mascaraBytes);
+                    if (lidos < 4) return null;
+                }
+                
+                byte[] dados = new byte[tamanho];
+                int lidos = 0;
+                while (lidos < tamanho) {
+                    int r = in.read(dados, lidos, tamanho - lidos);
+                    if (r == -1) break;
+                    lidos += r;
+                }
+                
+                if (mascara && mascaraBytes != null) {
+                    for (int i = 0; i < dados.length; i++) {
+                        dados[i] ^= mascaraBytes[i % 4];
+                    }
+                }
+                
+                return new String(dados, 0, lidos, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (SocketException e) {
+                return null;
             }
-
-            return new String(dados, java.nio.charset.StandardCharsets.UTF_8);
         }
 
         public void close() {
