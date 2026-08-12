@@ -16,7 +16,8 @@
         const input = document.getElementById('input');
         const sendBtn = document.getElementById('send');
 
-        const ws = new WebSocket('ws://localhost:8080/ws');
+        // Conecta na porta 8081 (servidor WebSocket separado)
+        const ws = new WebSocket('ws://localhost:8081');
 
         ws.onopen = function() {
             statusDiv.textContent = '✅ Conectado';
