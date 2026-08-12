@@ -1,136 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Servidor Java</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            max-width: 1000px;
-            margin: 50px auto;
-            text-align: center;
-            background: #f0f2f5;
-            padding: 20px;
-        }
-        h1 { color: #2c3e50; font-size: 2.8em; margin-bottom: 10px; }
-        .subtitle { color: #7f8c8d; font-size: 1.2em; margin-bottom: 30px; }
-        .info {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-        }
-        .badge {
-            display: inline-block;
-            background: #27ae60;
-            color: white;
-            padding: 8px 25px;
-            border-radius: 20px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .item {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #e9ecef;
-        }
-        .item strong { display: block; font-size: 1.3em; margin-bottom: 5px; color: #2c3e50; }
-        .item a { color: #3498db; text-decoration: none; }
-        .item a:hover { text-decoration: underline; }
-        .footer { margin-top: 30px; color: #95a5a6; font-size: 0.9em; }
-        .api-list { text-align: left; display: inline-block; margin: 15px auto; }
-        .api-list li { margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 5px; }
-        .api-list code { background: #2c3e50; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.9em; }
-        .websocket-link {
-            display: inline-block;
-            background: #8e44ad;
-            color: white;
-            padding: 10px 30px;
-            border-radius: 25px;
-            text-decoration: none;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .websocket-link:hover { background: #6c3483; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misael Andrejezieski | Portfólio</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>🚀 Servidor Java</h1>
-    <p class="subtitle">HTTP + WebSockets + Sessões + Cookies</p>
+    <!-- PARTÍCULAS DE FUNDO -->
+    <canvas id="particles"></canvas>
 
-    <div class="info">
-        <p><span class="badge">🟢 Online v3.0</span></p>
-        <p>📁 Arquivos: <code>./public/</code></p>
-        <p>🧵 Threads: pool dinâmico</p>
-        <p>🍪 Cookies e Sessões ativos</p>
-        <p>🔌 WebSockets: <strong id="ws-count">0</strong> conexões ativas</p>
-
-        <div class="grid">
-            <div class="item">
-                <strong>📄 Arquivos</strong>
-                HTML, CSS, JS, imagens
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="logo">🚀</span>
+                <span class="glitch-text" data-text="Misael">Misael</span>
             </div>
-            <div class="item">
-                <strong>⚡ API REST</strong>
-                Endpoints JSON
-            </div>
-            <div class="item">
-                <strong>🔌 WebSocket</strong>
-                Chat em tempo real
-            </div>
-            <div class="item">
-                <strong>🍪 Sessão</strong>
-                Dados persistentes
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="/projetos">Projetos</a></li>
+                <li><a href="/contato">Contato</a></li>
+            </ul>
+            <div class="nav-status">
+                <span class="status-dot online"></span>
+                <span class="neon-text">#Online</span>
             </div>
         </div>
-    </div>
+    </nav>
 
-    <div class="info">
-        <h3>🔗 Endpoints</h3>
-        <ul class="api-list">
-            <li><a href="/">/</a> - Página inicial</li>
-            <li><a href="/status">/status</a> - Status</li>
-            <li><a href="/sessao">/sessao</a> - Ver sessão</li>
-            <li><a href="/api/hello?nome=Java">/api/hello?nome=Java</a> - Saudação</li>
-            <li><a href="/api/hora">/api/hora</a> - Hora</li>
-            <li><a href="/api/data">/api/data</a> - Data</li>
-            <li><a href="/api/contador">/api/contador</a> - Contador (sessão)</li>
-            <li><a href="/api/status">/api/status</a> - Status JSON</li>
-        </ul>
-    </div>
+    <!-- MAIN -->
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="neon-badge">✦ Disponível para trabalho</span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="neon-text-pink">Misael</span>
+                    <span class="neon-text-blue">Andrejezieski</span>
+                </h1>
+                <h2 class="hero-subtitle">
+                    <span class="neon-text-cyan">Analista</span>
+                    <span class="neon-text-purple">|</span>
+                    <span class="neon-text-green">Desenvolvedor</span>
+                    <span class="neon-text-purple">|</span>
+                    <span class="neon-text-yellow">Sistemas</span>
+                </h2>
+                <p class="hero-description">
+                    Formado em <strong>Análise e Desenvolvimento de Sistemas</strong> pela <strong>Unicesumar</strong>.
+                    Construindo soluções com código, criatividade e propósito.
+                </p>
+                <div class="hero-buttons">
+                    <a href="/projetos" class="btn neon-btn-primary">✦ Ver Projetos</a>
+                    <a href="/contato" class="btn neon-btn-secondary">✉ Contato</a>
+                </div>
+            </div>
+            <div class="hero-illustration">
+                <div class="neon-orb pink"></div>
+                <div class="neon-orb cyan"></div>
+                <div class="neon-orb purple"></div>
+            </div>
+        </section>
 
-    <div class="info">
-        <h3>🔌 WebSocket Chat</h3>
-        <p>Clique no botão abaixo para abrir o chat em tempo real:</p>
-        <a href="/ws" class="websocket-link">💬 Abrir Chat</a>
-        <p style="margin-top: 10px; font-size: 0.9em; color: #7f8c8d;">
-            Comandos: <code>/nick [nome]</code> | <code>/ping</code> | <code>/sair</code>
-        </p>
-    </div>
+        <!-- SKILLS / TECNOLOGIAS -->
+        <section class="skills">
+            <h2 class="neon-subtitle">⚡ Tecnologias</h2>
+            <div class="skills-grid">
+                <span class="skill-tag neon-tag">Java</span>
+                <span class="skill-tag neon-tag">C#</span>
+                <span class="skill-tag neon-tag">.NET</span>
+                <span class="skill-tag neon-tag">JavaScript</span>
+                <span class="skill-tag neon-tag">HTML + CSS</span>
+                <span class="skill-tag neon-tag">SQL</span>
+                <span class="skill-tag neon-tag">Git</span>
+                <span class="skill-tag neon-tag">Linux</span>
+            </div>
+        </section>
 
-    <div class="footer">
-        <p>🔧 Servidor Java puro - sem frameworks</p>
-        <p>Versão 3.0 com WebSockets, Cookies e Sessões</p>
-    </div>
+        <!-- DESTAQUES -->
+        <section class="highlights">
+            <h2 class="neon-subtitle">🌟 Destaques</h2>
+            <div class="highlights-grid">
+                <div class="highlight-card neon-card">
+                    <span class="highlight-icon">🚀</span>
+                    <h3>Servidor HTTP + WebSocket</h3>
+                    <p>Construído em Java puro, com sessões, cookies e chat em tempo real.</p>
+                </div>
+                <div class="highlight-card neon-card">
+                    <span class="highlight-icon">🧠</span>
+                    <h3>Interpretador Brainfuck</h3>
+                    <p>Linguagem esotérica Turing-completa implementada do zero.</p>
+                </div>
+                <div class="highlight-card neon-card">
+                    <span class="highlight-icon">🌀</span>
+                    <h3>Labirinto 3D</h3>
+                    <p>Geração procedural e pathfinding com A* em Java.</p>
+                </div>
+            </div>
+        </section>
 
-    <script>
-        setInterval(() => {
-            fetch('/api/websockets')
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('ws-count').textContent = data.total;
-                })
-                .catch(() => {});
-        }, 2000);
-    </script>
+        <!-- FOOTER -->
+        <footer class="neon-footer">
+            <p>✦ Misael Andrejezieski ✦ 2026</p>
+            <div class="footer-links">
+                <a href="https://github.com" target="_blank" class="neon-link-footer">GitHub</a>
+                <a href="https://linkedin.com" target="_blank" class="neon-link-footer">LinkedIn</a>
+                <a href="/contato" class="neon-link-footer">Contato</a>
+            </div>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
 </body>
 </html>
