@@ -46,10 +46,12 @@ class Particle {
     }
 }
 
+// Cria as partículas
 for (let i = 0; i < particleCount; i++) {
     particles.push(new Particle());
 }
 
+// Anima as partículas
 function animateParticles() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => {
@@ -79,6 +81,7 @@ function animateParticles() {
 
 animateParticles();
 
+// Redimensiona o canvas
 window.addEventListener('resize', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -92,26 +95,307 @@ document.querySelectorAll('.nav-menu a').forEach(link => {
     });
 });
 
+// ============ STATUS DO SERVIDOR ============
+function atualizarStatus() {
+    fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+            const online = data.status === 'online';
+            const dot = document.querySelector('.status-dot');
+            if (dot) {
+                dot.className = 'status-dot ' + (online ? 'online' : 'offline');
+            }
+            const statusText = document.querySelector('.neon-text');
+            if (statusText) {
+                statusText.textContent = online ? '#Online' : '#Offline';
+            }
+        })
+        .catch(() => {
+            const dot = document.querySelector('.status-dot');
+            if (dot) dot.className = 'status-dot offline';
+            const statusText = document.querySelector('.neon-text');
+            if (statusText) statusText.textContent = '#Offline';
+        });
+}
+
+// Atualiza status a cada 5 segundos
+setInterval(atualizarStatus, 5000);
+atualizarStatus();
+
+// ============ SESSÃO ============
+function carregarSessao() {
+    fetch('/api/sessao')
+        .then(r => r.json())
+        .then(data => {
+            const sessao = data.sessao || {};
+            const sessionId = document.getElementById('session-id');
+            const sessionData = document.getElementById('session-data-content');
+            const sessionExpira = document.getElementById('session-expira');
+            const sessionIdDash = document.getElementById('session-id-dash');
+            
+            if (sessionId) sessionId.textContent = sessao.SESSION_ID || 'N/A';
+            if (sessionIdDash) sessionIdDash.textContent = sessao.SESSION_ID ? 'Ativa' : 'Nenhuma';
+            if (sessionData) sessionData.textContent = JSON.stringify(sessao, null, 2);
+            if (sessionExpira) sessionExpira.textContent = sessao.expira || 'N/A';
+        })
+        .catch(() => {
+            const sessionData = document.getElementById('session-data-content');
+            if (sessionData) sessionData.textContent = 'Erro ao carregar sessão';
+        });
+}
+
+function limparSessao() {
+    if (confirm('Tem certeza que deseja limpar a sessão?')) {
+        document.cookie = 'SESSION_ID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        alert('Sessão limpa! Recarregando a página...');
+        location.reload();
+    }
+}
+
+function testarSessao(tipo, valor) {
+    let url = '/api/';
+    if (tipo === 'contador') {
+        url = '/api/contador';
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                const contador = document.getElementById('contador-dash');
+                if (contador) contador.textContent = data.contador || 0;
+                carregarSessao();
+            })
+            .catch(() => alert('Erro ao incrementar contador'));
+    } else if (tipo === 'nome') {
+        if (!valor) return;
+        url = '/api/hello?nome=' + encodeURIComponent(valor);
+        fetch(url)
+            .then(() => {
+                carregarSessao();
+                alert('Nome salvo na sessão!');
+            })
+            .catch(() => alert('Erro ao salvar nome'));
+    }
+}
+
+function atualizarContador() {
+    fetch('/api/contador')
+        .then(r => r.json())
+        .then(data => {
+            const contador = document.getElementById('contador-dash');
+            if (contador) contador.textContent = data.contador || 0;
+        })
+        .catch(() => {});
+}
+
+// Carrega sessão e contador se os elementos existirem
+if (document.getElementById('session-id')) {
+    carregarSessao();
+}
+if (document.getElementById('contador-dash')) {
+    atualizarContador();
+    setInterval(atualizarContador, 3000);
+}
+setInterval(carregarSessao, 10000);
+
+// ============ CHAT WEBSOCKET ============
+let ws = null;
+let wsConectado = false;
+
+function conectarWebSocket() {
+    // Verifica se está na página do chat
+    if (!document.getElementById('chat-messages')) return;
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
+
+    ws.onopen = function() {
+        wsConectado = true;
+        const statusDot = document.getElementById('chat-status-indicator');
+        const statusText = document.getElementById('chat-status-text');
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send');
+        
+        if (statusDot) statusDot.className = 'status-dot online';
+        if (statusText) {
+            statusText.textContent = 'Conectado';
+            statusText.className = 'neon-text';
+        }
+        if (input) input.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (input) input.focus();
+        adicionarMensagemChat('🔗 Conectado ao servidor!', 'sistema');
+    };
+
+    ws.onmessage = function(evento) {
+        adicionarMensagemChat(evento.data, 'outro');
+    };
+
+    ws.onclose = function() {
+        wsConectado = false;
+        const statusDot = document.getElementById('chat-status-indicator');
+        const statusText = document.getElementById('chat-status-text');
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send');
+        
+        if (statusDot) statusDot.className = 'status-dot offline';
+        if (statusText) statusText.textContent = 'Desconectado';
+        if (input) input.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
+        adicionarMensagemChat('🔌 Desconectado. Tentando reconectar...', 'sistema');
+        setTimeout(conectarWebSocket, 3000);
+    };
+
+    ws.onerror = function() {
+        adicionarMensagemChat('❌ Erro na conexão.', 'sistema');
+    };
+}
+
+function adicionarMensagemChat(texto, classe = 'usuario') {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    
+    const div = document.createElement('div');
+    div.className = 'msg ' + classe;
+    div.textContent = texto;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function enviarMensagemChat() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    
+    const texto = input.value.trim();
+    if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(texto);
+    adicionarMensagemChat('👤 ' + texto, 'usuario');
+    input.value = '';
+    input.focus();
+}
+
+// Configura eventos do chat
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+
+if (chatInput) {
+    chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') enviarMensagemChat();
+    });
+}
+if (chatSend) {
+    chatSend.addEventListener('click', enviarMensagemChat);
+}
+
+// Inicia WebSocket se estiver na página do chat
+if (document.getElementById('chat-messages')) {
+    conectarWebSocket();
+}
+
+// ============ API TESTER ============
+function testarAPI() {
+    const method = document.getElementById('api-method');
+    const endpointInput = document.getElementById('api-endpoint');
+    const bodyInput = document.getElementById('api-body');
+    const responseDiv = document.getElementById('api-response-content');
+    const statusDiv = document.getElementById('api-response-status');
+    
+    if (!method || !endpointInput || !responseDiv) return;
+    
+    const methodValue = method.value;
+    let endpoint = endpointInput.value;
+    const body = bodyInput ? bodyInput.value : '';
+
+    if (methodValue === 'GET' && body) {
+        try {
+            const obj = JSON.parse(body);
+            const params = new URLSearchParams(obj);
+            endpoint += (endpoint.includes('?') ? '&' : '?') + params.toString();
+        } catch (e) {}
+    }
+
+    responseDiv.textContent = '⏳ Carregando...';
+    if (statusDiv) {
+        statusDiv.textContent = '';
+        statusDiv.className = 'response-status';
+    }
+
+    const options = {
+        method: methodValue,
+        headers: { 'Content-Type': 'application/json' }
+    };
+
+    if (methodValue !== 'GET' && body) {
+        options.body = body;
+    }
+
+    fetch(endpoint, options)
+        .then(r => {
+            if (statusDiv) {
+                const status = r.status + ' ' + r.statusText;
+                statusDiv.textContent = '📊 ' + status;
+                statusDiv.className = 'response-status ' + (r.ok ? 'success' : 'error');
+            }
+            return r.text();
+        })
+        .then(data => {
+            try {
+                const json = JSON.parse(data);
+                responseDiv.textContent = JSON.stringify(json, null, 2);
+            } catch (e) {
+                responseDiv.textContent = data || '✅ Requisição bem-sucedida (sem corpo)';
+            }
+        })
+        .catch(err => {
+            responseDiv.textContent = '❌ Erro: ' + err.message;
+            if (statusDiv) {
+                statusDiv.textContent = '❌ Erro na requisição';
+                statusDiv.className = 'response-status error';
+            }
+        });
+}
+
+// Mostrar/esconder campo de corpo da API
+const apiMethod = document.getElementById('api-method');
+if (apiMethod) {
+    apiMethod.addEventListener('change', function() {
+        const bodyGroup = document.getElementById('api-body-group');
+        if (bodyGroup) {
+            if (this.value === 'GET') {
+                bodyGroup.style.display = 'none';
+            } else {
+                bodyGroup.style.display = 'block';
+            }
+        }
+    });
+}
+
 // ============ CONTATO ============
 function enviarContato(event) {
     event.preventDefault();
     
-    const nome = document.getElementById('nome').value;
-    const email = document.getElementById('email').value;
-    const assunto = document.getElementById('assunto').value;
-    const mensagem = document.getElementById('mensagem').value;
-
-    // Simulação de envio
+    const nome = document.getElementById('nome');
+    const email = document.getElementById('email');
+    const assunto = document.getElementById('assunto');
+    const mensagem = document.getElementById('mensagem');
+    
+    if (!nome || !email || !assunto || !mensagem) return;
+    
     const btn = event.target.querySelector('.btn');
+    if (!btn) return;
+    
     const textoOriginal = btn.textContent;
     btn.textContent = '⏳ Enviando...';
     btn.disabled = true;
 
-    // Envia para o servidor (POST /api/contato)
     fetch('/api/contato', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, assunto, mensagem })
+        body: JSON.stringify({
+            nome: nome.value,
+            email: email.value,
+            assunto: assunto.value,
+            mensagem: mensagem.value
+        })
     })
     .then(r => r.json())
     .then(data => {
@@ -120,8 +404,7 @@ function enviarContato(event) {
         btn.style.color = '#0f0a12';
         btn.style.boxShadow = '0 0 40px rgba(166, 227, 161, 0.5)';
         
-        // Limpa o formulário
-        document.querySelector('.contato-form').reset();
+        event.target.reset();
         
         setTimeout(() => {
             btn.textContent = textoOriginal;
