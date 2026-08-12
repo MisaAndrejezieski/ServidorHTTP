@@ -2,25 +2,18 @@ Servidor HTTP/WebSocket em Java
 ================================
 
 Versão: 3.0
-Data:Wed Aug 12 13:17:04 GMT-03:00 2026
-Funcionalidades:
-✅ Servir arquivos estáticos
-✅ API REST com JSON
-✅ WebSockets (chat em tempo real)
-✅ Cookies de sessão
-✅ Sessões persistentes
-✅ Multi-thread
+Data:Wed Aug 12 14:56:37 GMT-03:00 2026
+Portfólio de Misael Andrejezieski
 
-Endpoints:
-- GET  /api/hello?nome=...  -> Saudação
-- GET  /api/hora            -> Hora atual
-- GET  /api/data            -> Data atual
-- GET  /api/contador        -> Contador (sessão)
-- GET  /api/status          -> Status do servidor
-- GET  /api/websockets      -> Conexões WebSocket
-- POST /api/echo            -> Ecoa o corpo
-- POST /api/contato         -> Recebe contato
+Páginas:
+- / (Home)
+- /projetos
+- /contato
+- /ws (Chat WebSocket)
 
-WebSocket:
-- ws://localhost:8080/ws
-- Comandos: /nick, /ping, /sair
+Links:
+- https://misaandrejezieski.github.io/Misa/
+- https://github.com/MisaAndrejezieski
+- https://www.linkedin.com/in/misael-andrejezieski-b4996720a/
+- https://www.instagram.com/misaelandrejezieski/
+- https://www.facebook.com/profile.php?id=100034358779961
