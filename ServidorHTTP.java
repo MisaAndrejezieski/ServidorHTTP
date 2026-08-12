@@ -22,12 +22,12 @@ public class ServidorHTTP {
     private static final int PORTA = 8080;
     private static final String DIRETORIO_PUBLICO = "./public";
     private static final Map<String, String> TIPOS_MIME = new HashMap<>();
-    
+
     // Gerenciamento de sessões
     private static final Map<String, Map<String, Object>> SESSOES = new ConcurrentHashMap<>();
     private static final Map<String, Long> SESSOES_EXPIRACAO = new ConcurrentHashMap<>();
     private static final long TEMPO_EXPIRACAO_SESSAO = 30 * 60 * 1000; // 30 minutos
-    
+
     // WebSockets
     private static final Map<String, WebSocketConnection> WEBSOCKETS = new ConcurrentHashMap<>();
     private static int websocketIdCounter = 0;
@@ -50,7 +50,7 @@ public class ServidorHTTP {
 
     public static void main(String[] args) {
         criarDiretorioPublico();
-        
+
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
         try (ServerSocket servidor = new ServerSocket(PORTA)) {
@@ -142,7 +142,7 @@ public class ServidorHTTP {
 
         // Processa cookies
         Map<String, String> cookies = parseCookies(cabecalhos.getOrDefault("Cookie", ""));
-        
+
         // Gerencia sessão
         String sessionId = cookies.get("SESSION_ID");
         Map<String, Object> sessao = getSession(sessionId);
@@ -152,31 +152,29 @@ public class ServidorHTTP {
             SESSOES.put(sessionId, sessao);
             SESSOES_EXPIRACAO.put(sessionId, System.currentTimeMillis() + TEMPO_EXPIRACAO_SESSAO);
         }
-        
+
         // Atualiza expiração
         SESSOES_EXPIRACAO.put(sessionId, System.currentTimeMillis() + TEMPO_EXPIRACAO_SESSAO);
 
         // Roteamento
         String response;
         if (caminhoBase.equals("/") || caminhoBase.equals("/index.html")) {
-            response = servirArquivo("/index.html", out);
+            response = servirArquivo("/index.html");
         } else if (caminhoBase.startsWith("/api/")) {
-            response = processarAPI(metodo, caminho, corpo.toString(), sessao, out);
+            response = processarAPI(metodo, caminho, corpo.toString(), sessao);
         } else if (caminhoBase.equals("/status")) {
-            response = enviarStatus(out);
+            response = enviarStatus();
         } else if (caminhoBase.equals("/sessao")) {
-            response = mostrarSessao(sessao, out);
+            response = mostrarSessao(sessao);
         } else if (caminhoBase.equals("/ws")) {
-            // Se não for upgrade, serve página de exemplo
-            response = servirArquivo("/websocket.html", out);
+            response = servirArquivo("/websocket.html");
         } else {
-            response = servirArquivo(caminhoBase, out);
+            response = servirArquivo(caminhoBase);
         }
 
         // Adiciona cookie de sessão se for nova
         if (response != null && !response.isEmpty() && !response.contains("Set-Cookie")) {
             String cookieHeader = "Set-Cookie: SESSION_ID=" + sessionId + "; Path=/; HttpOnly\r\n";
-            // Insere o cookie antes do \r\n\r\n
             int headerEnd = response.indexOf("\r\n\r\n");
             if (headerEnd > 0) {
                 response = response.substring(0, headerEnd) + "\r\n" + cookieHeader + response.substring(headerEnd);
@@ -190,11 +188,11 @@ public class ServidorHTTP {
     }
 
     // ==================== COOKIES ====================
-    
+
     private static Map<String, String> parseCookies(String cookieStr) {
         Map<String, String> cookies = new HashMap<>();
         if (cookieStr == null || cookieStr.isEmpty()) return cookies;
-        
+
         for (String cookie : cookieStr.split("; ")) {
             String[] parts = cookie.split("=", 2);
             if (parts.length == 2) {
@@ -205,7 +203,7 @@ public class ServidorHTTP {
     }
 
     // ==================== SESSÕES ====================
-    
+
     private static String gerarSessionId() {
         return UUID.randomUUID().toString().replace("-", "");
     }
@@ -236,20 +234,19 @@ public class ServidorHTTP {
     }
 
     // ==================== WEB SOCKETS ====================
-    
+
     private static void handleWebSocket(Socket cliente, Map<String, String> cabecalhos) throws IOException {
         String key = cabecalhos.get("Sec-WebSocket-Key");
         if (key == null) {
             return;
         }
 
-        // Resposta de handshake WebSocket
         String accept = base64Encode(sha1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
         String response = "HTTP/1.1 101 Switching Protocols\r\n" +
-                         "Upgrade: websocket\r\n" +
-                         "Connection: Upgrade\r\n" +
-                         "Sec-WebSocket-Accept: " + accept + "\r\n" +
-                         "\r\n";
+                "Upgrade: websocket\r\n" +
+                "Connection: Upgrade\r\n" +
+                "Sec-WebSocket-Accept: " + accept + "\r\n" +
+                "\r\n";
 
         cliente.getOutputStream().write(response.getBytes());
         cliente.getOutputStream().flush();
@@ -257,22 +254,19 @@ public class ServidorHTTP {
         String wsId = "ws-" + (++websocketIdCounter);
         WebSocketConnection ws = new WebSocketConnection(cliente, wsId);
         WEBSOCKETS.put(wsId, ws);
-        
+
         System.out.println("🔌 WebSocket conectado: " + wsId + " (Total: " + WEBSOCKETS.size() + ")");
-        
-        // Envia mensagem de boas-vindas
+
         ws.sendMessage("Bem-vindo ao WebSocket! ID: " + wsId);
         broadcast("🔵 Usuário " + wsId + " entrou no chat!");
 
-        // Loop de leitura
         try {
             while (true) {
                 String mensagem = ws.readMessage();
                 if (mensagem == null) break;
-                
+
                 System.out.println("📨 WebSocket " + wsId + ": " + mensagem);
-                
-                // Comandos especiais
+
                 if (mensagem.startsWith("/")) {
                     String[] cmd = mensagem.split(" ", 2);
                     switch (cmd[0].toLowerCase()) {
@@ -295,7 +289,6 @@ public class ServidorHTTP {
                             ws.sendMessage("❌ Comando desconhecido. Comandos: /nick, /ping, /sair");
                     }
                 } else {
-                    // Broadcast para todos
                     broadcast("💬 " + ws.getNome() + ": " + mensagem);
                 }
             }
@@ -359,10 +352,9 @@ public class ServidorHTTP {
         public void sendMessage(String mensagem) throws IOException {
             byte[] dados = mensagem.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             int tamanho = dados.length;
-            
-            // Frame WebSocket (texto)
+
             byte[] frame = new byte[2 + tamanho];
-            frame[0] = (byte) 0x81; // FIN + opcode texto
+            frame[0] = (byte) 0x81;
             if (tamanho <= 125) {
                 frame[1] = (byte) tamanho;
                 System.arraycopy(dados, 0, frame, 2, tamanho);
@@ -384,29 +376,25 @@ public class ServidorHTTP {
                 }
                 System.arraycopy(dados, 0, frame, 10, tamanho);
             }
-            
+
             out.write(frame);
             out.flush();
         }
 
         public String readMessage() throws IOException {
-            // Lê o primeiro byte (FIN + opcode)
             int b1 = in.read();
             if (b1 == -1) return null;
-            
-            // Verifica se é frame de fechamento
+
             if ((b1 & 0x0F) == 0x08) {
                 return null;
             }
-            
-            // Lê o segundo byte (máscara + tamanho)
+
             int b2 = in.read();
             if (b2 == -1) return null;
-            
+
             boolean mascara = (b2 & 0x80) != 0;
             int tamanho = b2 & 0x7F;
-            
-            // Lê tamanho extendido se necessário
+
             if (tamanho == 126) {
                 tamanho = (in.read() << 8) | in.read();
             } else if (tamanho == 127) {
@@ -415,25 +403,22 @@ public class ServidorHTTP {
                     tamanho = (tamanho << 8) | in.read();
                 }
             }
-            
-            // Lê máscara (4 bytes)
+
             byte[] mascaraBytes = null;
             if (mascara) {
                 mascaraBytes = new byte[4];
                 in.read(mascaraBytes);
             }
-            
-            // Lê dados
+
             byte[] dados = new byte[tamanho];
             in.read(dados);
-            
-            // Desmascara se necessário
+
             if (mascara && mascaraBytes != null) {
                 for (int i = 0; i < dados.length; i++) {
                     dados[i] ^= mascaraBytes[i % 4];
                 }
             }
-            
+
             return new String(dados, java.nio.charset.StandardCharsets.UTF_8);
         }
 
@@ -447,10 +432,10 @@ public class ServidorHTTP {
     }
 
     // ==================== SERVE ARQUIVOS ====================
-    
-    private static String servirArquivo(String caminho, OutputStream out) throws IOException {
+
+    private static String servirArquivo(String caminho) throws IOException {
         File arquivo = new File(DIRETORIO_PUBLICO + caminho);
-        
+
         if (!arquivo.exists() || arquivo.isDirectory()) {
             return enviarErro(404, "Arquivo não encontrado");
         }
@@ -465,65 +450,47 @@ public class ServidorHTTP {
         byte[] conteudo = Files.readAllBytes(arquivo.toPath());
 
         return "HTTP/1.1 200 OK\r\n" +
-               "Content-Type: " + mimeType + "\r\n" +
-               "Content-Length: " + conteudo.length + "\r\n" +
-               "Server: JavaHTTPServer/3.0\r\n" +
-               "Date: " + new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z").format(new Date()) + "\r\n" +
-               "Connection: close\r\n" +
-               "\r\n" +
-               new String(conteudo);
+                "Content-Type: " + mimeType + "\r\n" +
+                "Content-Length: " + conteudo.length + "\r\n" +
+                "Server: JavaHTTPServer/3.0\r\n" +
+                "Date: " + new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z").format(new Date()) + "\r\n" +
+                "Connection: close\r\n" +
+                "\r\n" +
+                new String(conteudo);
     }
 
     // ==================== API ====================
-    
-    private static String processarAPI(String metodo, String caminho, String corpo, 
-                                        Map<String, Object> sessao, OutputStream out) throws IOException {
+
+    private static String processarAPI(String metodo, String caminho, String corpo,
+                                        Map<String, Object> sessao) throws IOException {
         String resposta = "";
         int status = 200;
 
-        // GET /api/hello?nome=Joao
         if (caminho.startsWith("/api/hello")) {
             String nome = extrairParametro(caminho, "nome");
             if (nome == null) nome = "Mundo";
-            // Guarda na sessão
             sessao.put("ultimoNome", nome);
             sessao.put("ultimaVisita", new Date().toString());
-            resposta = "{\"mensagem\": \"Olá, " + nome + "!\", \"timestamp\": \"" + new Date() + "\", \"session\": \"" + sessao + "\"}";
-        } 
-        // POST /api/echo
-        else if (metodo.equals("POST") && caminho.equals("/api/echo")) {
+            resposta = "{\"mensagem\": \"Olá, " + nome + "!\", \"timestamp\": \"" + new Date() + "\"}";
+        } else if (metodo.equals("POST") && caminho.equals("/api/echo")) {
             resposta = "{\"recebido\": " + corpo + "}";
-        }
-        // GET /api/status
-        else if (caminho.equals("/api/status")) {
+        } else if (caminho.equals("/api/status")) {
             resposta = "{\"status\": \"online\", \"versao\": \"3.0\", \"websockets\": " + WEBSOCKETS.size() + "}";
-        }
-        // GET /api/hora
-        else if (caminho.equals("/api/hora")) {
+        } else if (caminho.equals("/api/hora")) {
             resposta = "{\"hora\": \"" + new SimpleDateFormat("HH:mm:ss").format(new Date()) + "\"}";
-        }
-        // GET /api/data
-        else if (caminho.equals("/api/data")) {
+        } else if (caminho.equals("/api/data")) {
             resposta = "{\"data\": \"" + new SimpleDateFormat("dd/MM/yyyy").format(new Date()) + "\"}";
-        }
-        // POST /api/contato
-        else if (metodo.equals("POST") && caminho.equals("/api/contato")) {
+        } else if (metodo.equals("POST") && caminho.equals("/api/contato")) {
             sessao.put("contato", corpo);
             resposta = "{\"mensagem\": \"Contato recebido com sucesso!\", \"dados\": " + corpo + "}";
-        }
-        // GET /api/sessao
-        else if (caminho.equals("/api/sessao")) {
-            resposta = "{\"sessao\": " + new com.google.gson.Gson().toJson(sessao) + "}";
-        }
-        // GET /api/contador
-        else if (caminho.equals("/api/contador")) {
+        } else if (caminho.equals("/api/sessao")) {
+            resposta = "{\"sessao\": " + mapToJson(sessao) + "}";
+        } else if (caminho.equals("/api/contador")) {
             Integer contador = (Integer) sessao.getOrDefault("contador", 0);
             contador++;
             sessao.put("contador", contador);
             resposta = "{\"contador\": " + contador + "}";
-        }
-        // GET /api/websockets
-        else if (caminho.equals("/api/websockets")) {
+        } else if (caminho.equals("/api/websockets")) {
             resposta = "{\"total\": " + WEBSOCKETS.size() + ", \"ids\": " + WEBSOCKETS.keySet() + "}";
         } else {
             status = 404;
@@ -531,58 +498,85 @@ public class ServidorHTTP {
         }
 
         return "HTTP/1.1 " + status + " " + (status == 200 ? "OK" : "Not Found") + "\r\n" +
-               "Content-Type: application/json\r\n" +
-               "Content-Length: " + resposta.length() + "\r\n" +
-               "Server: JavaHTTPServer/3.0\r\n" +
-               "Connection: close\r\n" +
-               "\r\n" +
-               resposta;
+                "Content-Type: application/json\r\n" +
+                "Content-Length: " + resposta.length() + "\r\n" +
+                "Server: JavaHTTPServer/3.0\r\n" +
+                "Connection: close\r\n" +
+                "\r\n" +
+                resposta;
+    }
+
+    // Converte Map para JSON manualmente (sem bibliotecas)
+    private static String mapToJson(Map<String, Object> map) {
+        if (map == null || map.isEmpty()) return "{}";
+
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append("\"").append(entry.getKey()).append("\": ");
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                sb.append("\"").append(value).append("\"");
+            } else if (value instanceof Number) {
+                sb.append(value);
+            } else if (value instanceof Boolean) {
+                sb.append(value);
+            } else if (value instanceof Date) {
+                sb.append("\"").append(value).append("\"");
+            } else {
+                sb.append("\"").append(value).append("\"");
+            }
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     // ==================== STATUS ====================
-    
-    private static String enviarStatus(OutputStream out) {
+
+    private static String enviarStatus() {
         return "HTTP/1.1 200 OK\r\n" +
-               "Content-Type: text/plain\r\n" +
-               "Content-Length: 14\r\n" +
-               "Server: JavaHTTPServer/3.0\r\n" +
-               "Connection: close\r\n" +
-               "\r\n" +
-               "Servidor OK ✓";
+                "Content-Type: text/plain\r\n" +
+                "Content-Length: 14\r\n" +
+                "Server: JavaHTTPServer/3.0\r\n" +
+                "Connection: close\r\n" +
+                "\r\n" +
+                "Servidor OK ✓";
     }
 
     // ==================== MOSTRAR SESSÃO ====================
-    
-    private static String mostrarSessao(Map<String, Object> sessao, OutputStream out) {
+
+    private static String mostrarSessao(Map<String, Object> sessao) {
         String html = "<html><body><h1>Sessão Atual</h1><pre>" + sessao + "</pre></body></html>";
         return "HTTP/1.1 200 OK\r\n" +
-               "Content-Type: text/html\r\n" +
-               "Content-Length: " + html.length() + "\r\n" +
-               "Server: JavaHTTPServer/3.0\r\n" +
-               "Connection: close\r\n" +
-               "\r\n" +
-               html;
+                "Content-Type: text/html\r\n" +
+                "Content-Length: " + html.length() + "\r\n" +
+                "Server: JavaHTTPServer/3.0\r\n" +
+                "Connection: close\r\n" +
+                "\r\n" +
+                html;
     }
 
     // ==================== ERROS ====================
-    
+
     private static String enviarErro(int codigo, String mensagem) {
         String resposta = "<html><body><h1>" + codigo + " " + mensagem + "</h1><p>Servidor Java HTTP</p></body></html>";
         return "HTTP/1.1 " + codigo + " " + mensagem + "\r\n" +
-               "Content-Type: text/html\r\n" +
-               "Content-Length: " + resposta.length() + "\r\n" +
-               "Server: JavaHTTPServer/3.0\r\n" +
-               "Connection: close\r\n" +
-               "\r\n" +
-               resposta;
+                "Content-Type: text/html\r\n" +
+                "Content-Length: " + resposta.length() + "\r\n" +
+                "Server: JavaHTTPServer/3.0\r\n" +
+                "Connection: close\r\n" +
+                "\r\n" +
+                resposta;
     }
 
     // ==================== UTILITÁRIOS ====================
-    
+
     private static String extrairParametro(String caminho, String parametro) {
         int idx = caminho.indexOf('?');
         if (idx == -1) return null;
-        
+
         String query = caminho.substring(idx + 1);
         for (String par : query.split("&")) {
             String[] chaveValor = par.split("=");
@@ -678,14 +672,14 @@ public class ServidorHTTP {
                 <body>
                     <h1>🚀 Servidor Java</h1>
                     <p class="subtitle">HTTP + WebSockets + Sessões + Cookies</p>
-                    
+
                     <div class="info">
                         <p><span class="badge">🟢 Online v3.0</span></p>
                         <p>📁 Arquivos: <code>./public/</code></p>
                         <p>🧵 Threads: pool dinâmico</p>
                         <p>🍪 Cookies e Sessões ativos</p>
                         <p>🔌 WebSockets: <strong id="ws-count">0</strong> conexões ativas</p>
-                        
+
                         <div class="grid">
                             <div class="item">
                                 <strong>📄 Arquivos</strong>
@@ -735,7 +729,6 @@ public class ServidorHTTP {
                     </div>
 
                     <script>
-                        // Atualiza contador de WebSockets
                         setInterval(() => {
                             fetch('/api/websockets')
                                 .then(r => r.json())
@@ -905,7 +898,7 @@ public class ServidorHTTP {
                         function enviarMensagem() {
                             const texto = input.value.trim();
                             if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
-                            
+
                             ws.send(texto);
                             adicionarMensagem('👤 ' + texto, 'usuario');
                             input.value = '';
@@ -918,7 +911,6 @@ public class ServidorHTTP {
 
                         enviar.addEventListener('click', enviarMensagem);
 
-                        // Conecta automaticamente
                         conectar();
                     </script>
                 </body>
@@ -938,10 +930,10 @@ public class ServidorHTTP {
                 fw.write("""
                 Servidor HTTP/WebSocket em Java
                 ================================
-                
+
                 Versão: 3.0
                 Data: """ + new Date() + """
-                
+
                 Funcionalidades:
                 ✅ Servir arquivos estáticos
                 ✅ API REST com JSON
@@ -949,7 +941,7 @@ public class ServidorHTTP {
                 ✅ Cookies de sessão
                 ✅ Sessões persistentes
                 ✅ Multi-thread
-                
+
                 Endpoints:
                 - GET  /api/hello?nome=...  -> Saudação
                 - GET  /api/hora            -> Hora atual
@@ -959,7 +951,7 @@ public class ServidorHTTP {
                 - GET  /api/websockets      -> Conexões WebSocket
                 - POST /api/echo            -> Ecoa o corpo
                 - POST /api/contato         -> Recebe contato
-                
+
                 WebSocket:
                 - ws://localhost:8080/ws
                 - Comandos: /nick, /ping, /sair
