@@ -57,6 +57,7 @@ function animateParticles() {
         p.draw();
     });
 
+    // Conexões entre partículas próximas
     for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
             const dx = particles[i].x - particles[j].x;
@@ -85,7 +86,7 @@ window.addEventListener('resize', () => {
 
 // ============ NAVEGAÇÃO ============
 document.querySelectorAll('.nav-menu a').forEach(link => {
-    link.addEventListener('click', function(e) {
+    link.addEventListener('click', function (e) {
         document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
         this.classList.add('active');
     });
@@ -201,7 +202,7 @@ function conectarWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
 
-    ws.onopen = function() {
+    ws.onopen = function () {
         wsConectado = true;
         const dot = document.getElementById('chat-status-dot');
         const text = document.getElementById('chat-status-text');
@@ -216,11 +217,11 @@ function conectarWebSocket() {
         adicionarMensagemChat('🔗 Conectado ao servidor!', 'sistema');
     };
 
-    ws.onmessage = function(evento) {
+    ws.onmessage = function (evento) {
         adicionarMensagemChat(evento.data, 'outro');
     };
 
-    ws.onclose = function() {
+    ws.onclose = function () {
         wsConectado = false;
         const dot = document.getElementById('chat-status-dot');
         const text = document.getElementById('chat-status-text');
@@ -236,7 +237,7 @@ function conectarWebSocket() {
         setTimeout(conectarWebSocket, 3000);
     };
 
-    ws.onerror = function() {
+    ws.onerror = function () {
         adicionarMensagemChat('❌ Erro na conexão.', 'sistema');
     };
 }
@@ -277,7 +278,7 @@ const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
 
 if (chatInput) {
-    chatInput.addEventListener('keydown', function(e) {
+    chatInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') enviarMensagemChat();
     });
 }
@@ -354,7 +355,7 @@ function testarAPI() {
 
 const apiMethod = document.getElementById('api-method');
 if (apiMethod) {
-    apiMethod.addEventListener('change', function() {
+    apiMethod.addEventListener('change', function () {
         const bodyGroup = document.getElementById('api-body-group');
         if (bodyGroup) {
             if (this.value === 'GET') {
@@ -394,28 +395,28 @@ function enviarContato(event) {
             mensagem: mensagem.value
         })
     })
-    .then(r => r.json())
-    .then(data => {
-        btn.textContent = '✅ Enviado!';
-        btn.style.background = '#a6e3a1';
-        btn.style.color = '#0f0a12';
-        btn.style.boxShadow = '0 0 40px rgba(166, 227, 161, 0.5)';
+        .then(r => r.json())
+        .then(data => {
+            btn.textContent = '✅ Enviado!';
+            btn.style.background = '#a6e3a1';
+            btn.style.color = '#0f0a12';
+            btn.style.boxShadow = '0 0 40px rgba(166, 227, 161, 0.5)';
 
-        event.target.reset();
+            event.target.reset();
 
-        setTimeout(() => {
-            btn.textContent = textoOriginal;
-            btn.style.background = '';
-            btn.style.color = '';
-            btn.style.boxShadow = '';
-            btn.disabled = false;
-        }, 3000);
-    })
-    .catch(() => {
-        btn.textContent = '❌ Erro';
-        setTimeout(() => {
-            btn.textContent = textoOriginal;
-            btn.disabled = false;
-        }, 3000);
-    });
+            setTimeout(() => {
+                btn.textContent = textoOriginal;
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.boxShadow = '';
+                btn.disabled = false;
+            }, 3000);
+        })
+        .catch(() => {
+            btn.textContent = '❌ Erro';
+            setTimeout(() => {
+                btn.textContent = textoOriginal;
+                btn.disabled = false;
+            }, 3000);
+        });
 }
