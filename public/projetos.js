@@ -102,5 +102,87 @@ const projetos = [
 ];
 
 // ============ PROJETOS EM DESTAQUE (para a Home) ============
-// Índices dos projetos que aparecerão na página inicial
-const projetosDestaque = [0, 2, 3, 8, 10]; // Cotton, NekoLamen, NeonOn, Copa 2026, FileForge
+const projetosDestaque = [0, 2, 3, 8, 10];
+
+// ============ FUNÇÕES PARA CARREGAR ============
+function carregarProjetos() {
+    const container = document.getElementById('projetos-container');
+    if (!container) {
+        console.log('⚠️ Container de projetos não encontrado');
+        return;
+    }
+
+    console.log('✅ Carregando ' + projetos.length + ' projetos...');
+    container.innerHTML = '';
+
+    projetos.forEach(projeto => {
+        const card = document.createElement('div');
+        card.className = 'projeto-card neon-card';
+        card.style.borderColor = projeto.cor;
+
+        card.innerHTML = `
+            <div class="projeto-icon">${projeto.icon}</div>
+            <h3 style="color: ${projeto.cor};">${projeto.titulo}</h3>
+            <p>${projeto.descricao}</p>
+            <div class="projeto-tags">
+                ${projeto.tags.map(tag => `<span>${tag}</span>`).join('')}
+            </div>
+            <a href="${projeto.link}" target="_blank" class="projeto-link">🌐 Ver projeto →</a>
+        `;
+
+        container.appendChild(card);
+    });
+
+    const total = document.getElementById('total-projetos');
+    if (total) {
+        total.textContent = projetos.length;
+        console.log('✅ Total de projetos: ' + projetos.length);
+    }
+}
+
+function carregarDestaques() {
+    const container = document.getElementById('destaque-container');
+    if (!container) {
+        console.log('⚠️ Container de destaques não encontrado');
+        return;
+    }
+
+    console.log('✅ Carregando destaques...');
+    container.innerHTML = '';
+
+    projetosDestaque.forEach(index => {
+        const projeto = projetos[index];
+        if (!projeto) return;
+
+        const card = document.createElement('a');
+        card.href = projeto.link;
+        card.target = '_blank';
+        card.className = 'destaque-card neon-card';
+
+        card.innerHTML = `
+            <span class="destaque-icon">${projeto.icon}</span>
+            <h3>${projeto.titulo}</h3>
+            <p>${projeto.descricao.split('.')[0]}</p>
+        `;
+
+        container.appendChild(card);
+    });
+    console.log('✅ Destaques carregados: ' + projetosDestaque.length);
+}
+
+// ============ INICIALIZAÇÃO AUTOMÁTICA ============
+// Carrega assim que o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 DOM carregado, iniciando projetos...');
+        carregarProjetos();
+        carregarDestaques();
+    });
+} else {
+    // Se o DOM já estiver carregado, executa imediatamente
+    console.log('🚀 DOM já carregado, iniciando projetos...');
+    carregarProjetos();
+    carregarDestaques();
+}
+
+console.log('📦 projetos.js carregado com ' + projetos.length + ' projetos');
